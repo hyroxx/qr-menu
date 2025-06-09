@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Yönetim Paneli</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <h1>Yönetim Paneli</h1>
+
+  <section>
+    <h2>Yemek Ekle</h2>
+    <form id="addItemForm">
+      <input type="text" id="name" placeholder="Yemek Adı" required />
+      <textarea id="description" placeholder="Açıklama"></textarea>
+      <input type="number" id="price" placeholder="Fiyat" required />
+      <input type="text" id="category_id" placeholder="Kategori ID" required />
+      <input type="file" id="photo" />
+      <button type="submit">Yemek Ekle</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>Bildirim Ekle</h2>
+    <form id="notificationForm">
+      <textarea id="content" placeholder="Bildirim içeriği" required></textarea>
+      <input type="date" id="payment_date" />
+      <input type="text" id="type" placeholder="Tip (örn: update_alert)" required />
+      <button type="submit">Bildirim Gönder</button>
+    </form>
+  </section>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const restoran_id = urlParams.get("restoran_id");
+
+    // Yemek ekleme
+    document.getElementById('addItemForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const formData = new FormData();
+      formData.append("name", document.getElementById('name').value);
+      formData.append("description", document.getElementById('description').value);
+      formData.append("price", document.getElementById('price').value);
+      formData.append("category_id", document.getElementById('category_id').value);
+      formData.append("photo", document.getElementById('photo').files[0]);
+      formData.append("restoran_id", restoran_id);
+
+      await fetch('/menu/items', {
+        method: 'POST',
+        body: formData
+      });
+
+      alert("Yemek eklendi.");
+    });
+
+    // Bildirim ekleme
+    document.getElementById('notificationForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const content = document.getElementById('content').value;
+      const payment_date = document.getElementById('payment_date').value;
+      const type = document.getElementById('type').value;
+
+      await fetch('/notifications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ content, payment_date, type, restaurant_id: restoran_id })
+      });
+
+      alert("Bildirim gönderildi.");
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+/* Genel Stil */
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background-color: #f9f9f9;
+  margin: 0;
+  padding: 0;
+  color: #2c3e50;
+}
+
+/* Başlık */
+h1 {
+  text-align: center;
+  padding: 20px;
+  background-color: #00b894;
+  color: white;
+  margin: 0;
+}
+
+/* Bildirim Alanı */
+.notification-bar {
+  background-color: #ffeaa7;
+  color: #2d3436;
+  padding: 10px;
+  text-align: center;
+  font-weight: 500;
+}
+
+/* Menü Konteyner */
+#menu-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+  padding: 20px;
+}
+
+/* Menü Kartları */
+.menu-item {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  width: 90%;
+  max-width: 300px;
+  transition: transform 0.2s ease;
+  padding: 10px;
+}
+
+.menu-item:hover {
+  transform: scale(1.02);
+}
+
+.menu-item img {
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+}
+
+.menu-item h3 {
+  margin-top: 10px;
+  font-size: 20px;
+  color: #0984e3;
+}
+
+.menu-item p {
+  font-size: 14px;
+  margin: 6px 0;
+}
+
+.menu-item strong {
+  font-size: 16px;
+  color: #2d3436;
+}
+
+/* Responsive */
+@media (min-width: 600px) {
+  .menu-item {
+    width: calc(50% - 20px);
+  }
+}
+
+@media (min-width: 900px) {
+  .menu-item {
+    width: calc(33% - 20px);
+  }
+}
