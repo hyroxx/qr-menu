@@ -28,3 +28,12 @@ router.post('/login', async (req, res) => {
 });
 
 module.exports = router;
+
+
+
+// Ana sayfa rotası
+router.get('/', (req, res) => {
+  res.send('Ana sayfa çalışıyor!');
+});
+
+module.exports = router;

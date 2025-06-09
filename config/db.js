@@ -1,26 +1,20 @@
-// config/db.js
-
 const mysql = require('mysql2');
-const dotenv = require('dotenv');
+require('dotenv').config();
 
-// .env dosyasını oku
-dotenv.config();
-
-// Veritabanı bağlantısı oluştur
 const connection = mysql.createConnection({
-  host: process.env.DB_HOST,       // örnek: localhost
-  user: process.env.DB_USER,       // örnek: root
-  password: process.env.DB_PASSWORD, // örnek: hahaha555
-  database: process.env.DB_NAME    // örnek: e2_digital_solutions
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASS,
+  database: process.env.DB_NAME,
 });
 
-// Bağlantı kontrolü
 connection.connect((err) => {
   if (err) {
-    console.error('❌ Veritabanı bağlantı HATASI: ' + err.stack);
-    return;
+    console.error('❌ Veritabanı bağlantı hatası:', err.message);
+  } else {
+    console.log('✅ Veritabanına başarıyla bağlanıldı.');
   }
-  console.log('✅ Veritabanına başarıyla bağlanıldı.');
 });
 
 module.exports = connection;
