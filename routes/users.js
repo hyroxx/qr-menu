@@ -1,39 +1,53 @@
+// routes/users.js
+
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
+const bcrypt = require('bcrypt');
 
-// Giriş (login) route
-router.post('/login', async (req, res) => {
+// Giriş
+router.post('/login', (req, res) => {
   const { email, password } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ success: false, message: 'Email ve şifre gerekli.' });
-  }
-
-  try {
-    const [results] = await db.promise().query(
-      'SELECT restoran_id FROM users WHERE email = ? AND password = ?',
-      [email, password]
-    );
-
-    if (results.length > 0) {
-      res.json({ success: true, restoran_id: results[0].restoran_id });
-    } else {
-      res.json({ success: false, message: 'Email veya şifre yanlış.' });
+  const sql = 'SELECT * FROM restaurants WHERE email = ?';
+  db.query(sql, [email], async (err, results) => {
+    if (err) {
+      console.error('❌ Giriş sırasında hata:', err);
+      return res.status(500).json({ success: false, message: 'Sunucu hatası.' });
     }
-  } catch (error) {
-    console.error('Login Error:', error);
-    res.status(500).json({ success: false, message: 'Sunucu hatası.' });
+
+    if (results.length === 0) {
+      return res.status(401).json({ success: false, message: 'Kullanıcı bulunamadı.' });
+    }
+
+    const user = results[0];
+
+    const passwordMatch = password === user.password; // bcrypt kullanılmazsa
+
+    if (!passwordMatch) {
+      return res.status(401).json({ success: false, message: 'Şifre hatalı.' });
+    }
+
+    // Oturumu başlat
+    req.session.restoran_id = user.id;
+
+    res.json({ success: true, restoran_id: user.id });
+  });
+});
+
+// Oturum kontrolü
+router.get('/check-session', (req, res) => {
+  if (req.session.restoran_id) {
+    res.json({ loggedIn: true, restoran_id: req.session.restoran_id });
+  } else {
+    res.json({ loggedIn: false });
   }
 });
 
-module.exports = router;
-
-
-
-// Ana sayfa rotası
-router.get('/', (req, res) => {
-  res.send('Ana sayfa çalışıyor!');
+// Çıkış (logout)
+router.post('/logout', (req, res) => {
+  req.session.destroy();
+  res.json({ success: true });
 });
 
 module.exports = router;

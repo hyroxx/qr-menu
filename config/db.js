@@ -1,20 +1,24 @@
 const mysql = require('mysql2');
 require('dotenv').config();
 
-const connection = mysql.createConnection({
+// Create a MySQL connection pool for better stability
+const pool = mysql.createPool({
+  connectionLimit: 10, // Max simultaneous connections
   host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
+  port: process.env.DB_PORT || 3306,
   user: process.env.DB_USER,
   password: process.env.DB_PASS,
-  database: process.env.DB_NAME,
+  database: process.env.DB_NAME
 });
 
-connection.connect((err) => {
+// Test initial connection
+pool.getConnection((err, connection) => {
   if (err) {
-    console.error('❌ Veritabanı bağlantı hatası:', err.message);
+    console.error('❌ MySQL connection failed:', err.message);
   } else {
-    console.log('✅ Veritabanına başarıyla bağlanıldı.');
+    console.log('✅ Connected to Railway DB via connection pool.');
+    connection.release(); // Important: return connection to pool
   }
 });
 
-module.exports = connection;
+module.exports = pool;

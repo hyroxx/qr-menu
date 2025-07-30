@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(window.location.search);
   const restoranId = params.get('restoran_id');
+  const lang = params.get('lang') || 'en';
 
   if (!restoranId) {
     document.getElementById('menu-container').innerHTML = '<p>Restoran ID bulunamadı.</p>';
@@ -8,7 +9,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   try {
-    // 👉 1. Duyuruları getir
     const notificationsRes = await fetch(`/notifications/${restoranId}`);
     const notifications = await notificationsRes.json();
 
@@ -17,8 +17,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       notificationBar.textContent = notifications[0].content;
     }
 
-    // 👉 2. Menü öğelerini getir
-    const response = await fetch(`/menu/items/${restoranId}`);
+    const response = await fetch(`/menu/items/${restoranId}?lang=${lang}`);
     const menuItems = await response.json();
 
     const container = document.getElementById('menu-container');
@@ -28,7 +27,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    // 👉 3. Menü kartlarını oluştur
     menuItems.forEach(item => {
       const itemDiv = document.createElement('div');
       itemDiv.classList.add('menu-item');
