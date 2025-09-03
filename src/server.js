@@ -2,7 +2,6 @@
 
 const express = require('express');
 const app = express();
-const port = 3000;
 const path = require('path');
 const session = require('express-session');
 const dotenv = require('dotenv');
@@ -10,6 +9,7 @@ const userRoutes = require('../routes/users');
 const menuRoutes = require('../routes/menuItems');
 const categoryRoutes = require('../routes/menuCategories');
 const notificationRoutes = require('../routes/notifications');
+const port = process.env.PORT || 3000;
 
 dotenv.config();
 
@@ -41,6 +41,6 @@ app.get('/', (req, res) => {
 });
 
 // Sunucuyu başlat
-app.listen(port, () => {
-  console.log(`✅ Sunucu ${port} portunda çalışıyor`);
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Server running on port ${port}`);
 });
