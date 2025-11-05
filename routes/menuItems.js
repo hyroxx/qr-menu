@@ -1,86 +1,114 @@
-// routes/menuItems.js
-
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
-const upload = require('../middleware/upload');
-const path = require('path');
 
-// Menü öğesi ekleme
-router.post('/items', upload.single('photo'), (req, res) => {
-  const { name, description, price, category_id, restoran_id, tags, allergens, available_from, available_to } = req.body;
+/**
+ * GET /menu/:slug
+ * Query: lang=tr|en|es|fr (opsiyonel, default: en)
+ * Dönen yapı: { restaurant, categories: [ {id,name,subcategories:[...] } ], items: [...] }
+ */
+router.get('/:slug', async (req, res) => {
+  const lang = (req.query.lang || 'en').toLowerCase();
+  const allowed = ['tr','en','es','fr'];
+  const langSafe = allowed.includes(lang) ? lang : 'en';
 
-  if (!name || !price || !category_id || !restoran_id || !allergens) {
-    return res.status(400).json({ error: 'Zorunlu alanlar eksik.' });
+  const conn = db; // mysql2 pool/connection
+  const { slug } = req.params;
+
+  try {
+    // 1) Restoran bul
+    const [restRows] = await conn.query(
+      `SELECT id, name, slug, logo_url, about_text
+       FROM restaurants
+       WHERE slug = ? LIMIT 1`,
+      [slug]
+    );
+    if (restRows.length === 0) {
+      return res.status(404).json({ error: 'Restaurant not found' });
+    }
+    const restaurant = restRows[0];
+
+    // 2) Kategoriler (çeviri + fallback)
+    const [catRows] = await conn.query(
+      `SELECT
+          c.id,
+          COALESCE(ct.name, c.name) AS name,
+          c.display_order
+       FROM menu_categories c
+       LEFT JOIN menu_category_translations ct
+         ON ct.category_id = c.id AND ct.language_code = ?
+       WHERE c.restaurant_id = ?
+       ORDER BY c.display_order ASC, c.id ASC`,
+      [langSafe, restaurant.id]
+    );
+
+    // 3) Alt kategoriler (varsa)
+    let subcatMap = {};
+    const [subRows] = await conn.query(
+      `SELECT
+          sc.id,
+          sc.category_id,
+          COALESCE(sct.name, sc.name) AS name,
+          sc.display_order
+       FROM menu_subcategories sc
+       LEFT JOIN menu_subcategory_translations sct
+         ON sct.subcategory_id = sc.id AND sct.language_code = ?
+       WHERE sc.restaurant_id = ?
+       ORDER BY sc.display_order ASC, sc.id ASC`,
+      [langSafe, restaurant.id]
+    ).catch(() => [ [] ]); // tablo yoksa bozmasın
+
+    if (subRows && subRows.length) {
+      subRows.forEach(r => {
+        if (!subcatMap[r.category_id]) subcatMap[r.category_id] = [];
+        subcatMap[r.category_id].push({
+          id: r.id,
+          name: r.name,
+          display_order: r.display_order
+        });
+      });
+    }
+
+    // 4) Ürünler (çeviri + fallback)
+    const [itemRows] = await conn.query(
+      `SELECT
+          i.id,
+          i.category_id,
+          i.subcategory_id,
+          COALESCE(it.name, i.name) AS name,
+          COALESCE(it.description, i.description) AS description,
+          i.price,
+          i.currency,
+          i.image_url,
+          i.is_new,
+          i.created_at,
+          i.allergens
+       FROM menu_items i
+       LEFT JOIN menu_item_translations it
+         ON it.menu_item_id = i.id AND it.language_code = ?
+       WHERE i.restaurant_id = ?
+       ORDER BY i.display_order ASC, i.id ASC`,
+      [langSafe, restaurant.id]
+    );
+
+    // 5) Kategori ağacı oluştur
+    const categories = catRows.map(c => ({
+      id: c.id,
+      name: c.name,
+      display_order: c.display_order,
+      subcategories: subcatMap[c.id] || []
+    }));
+
+    res.json({
+      restaurant,
+      lang: langSafe,
+      categories,
+      items: itemRows
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error', details: String(err) });
   }
-
-  const photo_url = req.file ? `/uploads/${req.file.filename}` : null;
-
-  const sql = `
-    INSERT INTO menu_items
-    (name, description, price, category_id, restaurant_id, tags, allergens, available_from, available_to, photo_url)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
-
-  db.query(sql, [name, description, price, category_id, restoran_id, tags, allergens, available_from, available_to, photo_url], (err, result) => {
-    if (err) {
-      console.error('Yemek eklenirken hata:', err);
-      return res.status(500).json({ error: 'Sunucu hatası.' });
-    }
-    res.status(201).json({ message: 'Yemek başarıyla eklendi.' });
-  });
-});
-
-// Menü listeleme (çok dilli destekli)
-router.get('/items/:restaurant_id', (req, res) => {
-  const { restaurant_id } = req.params;
-  const { lang } = req.query;
-  const currentTime = new Date().toTimeString().split(' ')[0];
-
-  const sql = `
-    SELECT 
-      mi.id, 
-      COALESCE(mt.name, mi.name) AS name,
-      COALESCE(mt.description, mi.description) AS description,
-      mi.price, mi.photo_url, mi.tags, mi.allergens
-    FROM menu_items mi
-    LEFT JOIN menu_item_translations mt 
-      ON mi.id = mt.menu_item_id AND mt.language_code = ?
-    WHERE mi.restaurant_id = ?
-    AND (mi.available_from IS NULL OR mi.available_from <= ?)
-    AND (mi.available_to IS NULL OR mi.available_to >= ?)
-  `;
-
-  db.query(sql, [lang || 'en', restaurant_id, currentTime, currentTime], (err, results) => {
-    if (err) {
-      console.error('Çok dilli menü çekilirken hata:', err);
-      return res.status(500).json({ error: 'Sunucu hatası.' });
-    }
-    res.json(results);
-  });
-});
-
-// Menü öğesi için çeviri ekleme
-router.post('/items/translate', (req, res) => {
-  const { menu_item_id, language_code, name, description } = req.body;
-
-  if (!menu_item_id || !language_code || !name) {
-    return res.status(400).json({ error: 'Zorunlu alanlar eksik.' });
-  }
-
-  const sql = `
-    INSERT INTO menu_item_translations (menu_item_id, language_code, name, description)
-    VALUES (?, ?, ?, ?)
-    ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description)
-  `;
-
-  db.query(sql, [menu_item_id, language_code, name, description], (err, result) => {
-    if (err) {
-      console.error('Çeviri eklenirken hata:', err);
-      return res.status(500).json({ error: 'Sunucu hatası.' });
-    }
-    res.json({ message: 'Çeviri kaydedildi.' });
-  });
 });
 
 module.exports = router;
