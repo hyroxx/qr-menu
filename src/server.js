@@ -7,20 +7,20 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// DB connection (mysql2 pool) – mevcut config/db.js dosyanı kullanıyoruz
+// DB
 const db = require('../config/db');
 
-// Routes
+// ROUTES
 const menuItemsRoute = require('../routes/menuItems');
-const restaurantRoute = require('../routes/restaurants');
-const migrateRoute = require('../routes/migrate'); // tek seferlik migration endpoint
+const restaurantsRoute = require('../routes/restaurants'); // ✅ DOĞRU OLAN BU
+const migrateRoute = require('../routes/migrate'); // eğer sildiysen bu satırı kaldır
 
-// Middlewares
+// MIDDLEWARES
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Healthcheck (DB testi dahil)
+// HEALTH CHECK
 app.get('/healthz', async (req, res) => {
   try {
     await db.query('SELECT 1');
@@ -31,27 +31,25 @@ app.get('/healthz', async (req, res) => {
   }
 });
 
-// Statik dosyalar (public)
+// STATIC
 app.use(express.static(path.join(__dirname, '../public')));
 
-// API
+// API ROUTES
 app.use('/menu', menuItemsRoute);
-app.use('/restaurant', restaurantRoute);
+app.use('/restaurants', restaurantsRoute);
+app.use('/__migrate', migrateRoute); // eğer sildiysen kaldır
 
-// 🔐 Tek seferlik migrate endpoint (token ile korunur)
-app.use('/__migrate', migrateRoute);
-
-// Root
+// ROOT
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
-// SPA catch-all: /{slug} ve /{slug}/menu gibi tüm frontend URL’lerini index.html’e döndür
+// CATCH-ALL (SPA)
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
-// Start
+// START
 app.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
 });
