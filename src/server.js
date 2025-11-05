@@ -36,6 +36,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 // API ROUTES
 app.use('/menu', menuItemsRoute);
+app.use('/restaurant', restaurantsRoute);
 app.use('/restaurants', restaurantsRoute);
 
 
