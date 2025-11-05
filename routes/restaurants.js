@@ -3,51 +3,44 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 
-/**
- * @route GET /api/restaurant/:slug
- * @desc  Get restaurant info + translations by slug
- * örnek: /api/restaurant/cafe-eva?lang=es
- */
+// GET /restaurant/:slug  (server.js hem /restaurant hem /restaurants altında mount ediyor)
 router.get('/:slug', async (req, res) => {
   const { slug } = req.params;
-  const lang = req.query.lang || 'en';
+  const lang = (req.query.lang || 'en').toLowerCase();
 
   try {
-    // 1️⃣ Restoran temel bilgilerini çek
-    const [rows] = await db.promise().query(
-      `SELECT id, name, cover_photo 
-       FROM restaurants 
-       WHERE slug = ? 
-       LIMIT 1`,
+    // 1) Restaurant
+    const [rRes] = await db.query(
+      `SELECT id, slug, name, logo_url, about_text, phone, address,
+              instagram_url, facebook_url, website_url, opening_hours
+       FROM restaurants WHERE slug = ? LIMIT 1`,
       [slug]
     );
-
-    if (rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Restaurant not found' });
+    if (!rRes || rRes.length === 0) {
+      return res.status(404).json({ error: 'restaurant_not_found' });
     }
+    const restaurant = rRes[0];
 
-    const restaurant = rows[0];
-
-    // 2️⃣ Dil çevirisini çek (tanıtım yazısı)
-    const [transRows] = await db.promise().query(
-      `SELECT about_text 
-       FROM restaurant_translations 
-       WHERE restaurant_id = ? AND language_code = ? 
-       LIMIT 1`,
-      [restaurant.id, lang]
+    // 2) Categories (with translation fallback)
+    const [cRes] = await db.query(
+      `SELECT c.id,
+              COALESCE(ct.name, c.name) AS name,
+              c.display_order
+       FROM menu_categories c
+       LEFT JOIN menu_category_translations ct
+         ON ct.category_id = c.id AND ct.language_code = ?
+       WHERE c.restaurant_id = ?
+       ORDER BY c.display_order ASC, c.id ASC`,
+      [lang, restaurant.id]
     );
 
-    if (transRows.length > 0) {
-      restaurant.about_text = transRows[0].about_text;
-    } else {
-      // Dil çevirisi yoksa varsayılan boş string
-      restaurant.about_text = '';
-    }
-
-    res.json({ success: true, restaurant });
-  } catch (error) {
-    console.error('❌ Restaurant fetch error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.json({
+      restaurant,
+      categories: cRes
+    });
+  } catch (e) {
+    console.error('❌ Restaurant fetch error:', e);
+    res.status(500).json({ error: 'server_error', detail: String(e) });
   }
 });
 
