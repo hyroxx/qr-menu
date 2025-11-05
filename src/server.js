@@ -12,7 +12,7 @@ const db = require('../config/db');
 
 // Routes
 const menuItemsRoute = require('../routes/menuItems');
-const restaurantRoute = require('../routes/restaurant');
+const restaurantRoute = require('../routes/restaurants');
 const migrateRoute = require('../routes/migrate'); // tek seferlik migration endpoint
 
 // Middlewares
