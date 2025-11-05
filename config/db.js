@@ -1,24 +1,20 @@
-const mysql = require('mysql2');
+// config/db.js
+const mysql = require('mysql2/promise');
 require('dotenv').config();
 
-// Create a MySQL connection pool for better stability
 const pool = mysql.createPool({
-  connectionLimit: 10, // Max simultaneous connections
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT || 3306,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  database: process.env.DB_NAME
-});
-
-// Test initial connection
-pool.getConnection((err, connection) => {
-  if (err) {
-    console.error('❌ MySQL connection failed:', err.message);
-  } else {
-    console.log('✅ Connected to Railway DB via connection pool.');
-    connection.release(); // Important: return connection to pool
-  }
+  host: process.env.MYSQLHOST,
+  port: Number(process.env.MYSQLPORT || 3306),
+  user: process.env.MYSQLUSER,
+  password: process.env.MYSQLPASSWORD,
+  database: process.env.MYSQLDATABASE,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+  // Railway proxy hostlarında SSL zorunlu; sertifikayı doğrulamayalım (proxy self-signed olabilir)
+  ssl: { rejectUnauthorized: false },
+  // Ağ gecikmeleri için makul bir timeout
+  connectTimeout: 15000,
 });
 
 module.exports = pool;
