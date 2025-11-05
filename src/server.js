@@ -4,30 +4,40 @@ const path = require("path");
 const express = require("express");
 const cors = require("cors");
 
+// DB health sadece healthz için okunuyor; router'lar kendi içinde pool kullanmalı
+const { isDbHealthy } = require("../config/db");
+
 const app = express();
 
-// ✅ Middleware
+// --- Genel middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ✅ Public klasörünü statik olarak sun
+// --- Statik dosyalar
 const PUBLIC_DIR = path.join(__dirname, "..", "public");
 app.use(express.static(PUBLIC_DIR, { maxAge: "1h", etag: true }));
 
-// ✅ Health check
+// --- Health (DB'yi beklemeden 200 döner; durum bilgisini de ekler)
 app.get("/healthz", (req, res) => {
-  res.json({ status: "ok" });
+  res.json({ ok: true, db: isDbHealthy() ? "up" : "down" });
 });
 
-// ✅ ROUTES (API)
+// --- API router'ları (ÖNCE tanımla ki slug rotaları gölge düşürmesin)
 const restaurantsRouter = require("../routes/restaurants");
-const customerMenuRouter = require("../routes/customerMenu");
+
+// customerMenu opsiyonel; yoksa app çökmesin
+let customerMenuRouter = (req, res, next) => next();
+try {
+  customerMenuRouter = require("../routes/customerMenu");
+} catch {
+  console.warn("ℹ️ routes/customerMenu bulunamadı, atlanıyor.");
+}
 
 app.use("/restaurant", restaurantsRouter);
 app.use("/api/customer-menu", customerMenuRouter);
 
-// ✅ SPA (Slug bazlı restoran sayfaları)
+// --- SPA (slug bazlı sayfalar)
 const serveIndex = (_req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, "index.html"));
 };
@@ -36,10 +46,10 @@ const serveIndex = (_req, res) => {
 app.get("/:slug", serveIndex);
 // Menü sayfası
 app.get("/:slug/menu", serveIndex);
-// Alt yollar (ör. /cafe-eva/menu?lang=tr)
+// Slug alt yolları
 app.get("/:slug/*", serveIndex);
 
-// ✅ 404 yakalama (API dışı istekler)
+// --- API 404 (yalnızca API yolları için)
 app.use((req, res, next) => {
   if (req.path.startsWith("/restaurant") || req.path.startsWith("/api")) {
     return res.status(404).json({ error: "not_found" });
@@ -47,15 +57,14 @@ app.use((req, res, next) => {
   return serveIndex(req, res); // SPA fallback
 });
 
-// ✅ Genel hata yakalayıcı
-app.use((err, req, res, next) => {
+// --- Genel hata yakalayıcı
+app.use((err, _req, res, _next) => {
   console.error("❌ Unhandled error:", err);
   res.status(500).json({ error: "server_error", detail: String(err) });
 });
 
-// ✅ PORT
+// --- Port
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
 });
-
