@@ -13,7 +13,7 @@ const db = require('../config/db');
 // ROUTES
 const menuItemsRoute = require('../routes/menuItems');
 const restaurantsRoute = require('../routes/restaurants'); // ✅ DOĞRU OLAN BU
-const migrateRoute = require('../routes/migrate'); // eğer sildiysen bu satırı kaldır
+
 
 // MIDDLEWARES
 app.use(cors({ origin: true, credentials: true }));
@@ -37,7 +37,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 // API ROUTES
 app.use('/menu', menuItemsRoute);
 app.use('/restaurants', restaurantsRoute);
-app.use('/__migrate', migrateRoute); // eğer sildiysen kaldır
+
 
 // ROOT
 app.get('/', (req, res) => {
