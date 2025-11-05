@@ -90,7 +90,8 @@ router.get("/:slug", async (req, res, next) => {
       LEFT JOIN menu_item_translations it
         ON it.menu_item_id = i.id AND it.language_code = ?
       WHERE i.restaurant_id = ?
-      ORDER BY i.display_order ASC, i.id ASC
+      ORDER BY COALESCE(i.display_order, 0) ASC, i.id ASC
+
       `,
       [lang, restaurant.id]
     );
