@@ -1,103 +1,82 @@
 // public/app.js
-(function () {
-  // ---------- URL / LANG / SLUG ----------
+document.addEventListener("DOMContentLoaded", function () {
   const url = new URL(window.location.href);
   let lang = (url.searchParams.get("lang") || "en").toLowerCase();
 
-  const pathParts = window.location.pathname.split("/").filter(Boolean);
-  const slug = pathParts[0] || null;
-  const isMenuPath = pathParts.length > 1 && pathParts[1] === "menu";
+  const parts = window.location.pathname.split("/").filter(Boolean);
+  const slug = parts[0] || null;
+  const isMenuPath = parts[1] === "menu";
 
   if (!slug) {
-    const hp = document.getElementById("homepage");
-    if (hp) {
-      hp.innerHTML =
-        "<h1>QR Menü</h1><p>Lütfen geçerli bir restoran QR linki kullanın.</p>";
-    }
+    const h = document.getElementById("homepage");
+    if (h) h.innerHTML = "<h2>QR Menü</h2><p>Geçersiz restoran bağlantısı.</p>";
     return;
   }
 
-  // ---------- ELEMENTLER ----------
+  // Elements
   const els = {
-    languageSwitcher: document.getElementById("language-switcher"),
+    langSwitcher: document.getElementById("language-switcher"),
     homepage: document.getElementById("homepage"),
-    restaurantName: document.getElementById("restaurant-name"),
-    restaurantPhoto: document.getElementById("restaurant-photo"),
-    restaurantDescription: document.getElementById("restaurant-description"),
-    goToMenuBtn: document.getElementById("go-to-menu-btn"),
-
-    notifications: document.getElementById("notifications"),
-
-    categoryButtons: document.getElementById("category-buttons"),
-    subcategoryButtons: document.getElementById("subcategory-buttons"),
-    menuContainer: document.getElementById("menu-container"),
-
-    navWrapper: document.getElementById("nav-back-wrapper"),
+    name: document.getElementById("restaurant-name"),
+    photo: document.getElementById("restaurant-photo"),
+    desc: document.getElementById("restaurant-description"),
+    goMenu: document.getElementById("go-to-menu-btn"),
+    notes: document.getElementById("notifications"),
+    catWrap: document.getElementById("category-buttons"),
+    subWrap: document.getElementById("subcategory-buttons"),
+    menu: document.getElementById("menu-container"),
+    navWrap: document.getElementById("nav-back-wrapper"),
     btnBackHome: document.getElementById("btn-back-home"),
     btnBackMenu: document.getElementById("btn-back-menu"),
-    btnBackCategory: document.getElementById("btn-back-category"),
-    backCategoryName: document.getElementById("back-category-name"),
-
+    btnBackCat: document.getElementById("btn-back-category"),
+    backCatName: document.getElementById("back-category-name"),
     modal: document.getElementById("item-modal"),
     modalClose: document.getElementById("modal-close"),
-    modalImage: document.getElementById("modal-image"),
+    modalImg: document.getElementById("modal-image"),
     modalTitle: document.getElementById("modal-title"),
-    modalDescription: document.getElementById("modal-description"),
+    modalDesc: document.getElementById("modal-description"),
     modalPrice: document.getElementById("modal-price"),
-    modalAllergens: document.getElementById("modal-allergens"),
+    modalAll: document.getElementById("modal-allergens"),
     modalBackHome: document.getElementById("modal-back-home"),
     modalBackMenu: document.getElementById("modal-back-menu"),
-    modalBackCategory: document.getElementById("modal-back-category"),
-    modalBackCategoryName: document.getElementById("modal-back-category-name"),
-
+    modalBackCat: document.getElementById("modal-back-category"),
+    modalBackCatName: document.getElementById("modal-back-category-name"),
     footerContact: document.getElementById("footer-contact"),
     footerFollow: document.getElementById("footer-follow"),
   };
 
-  // ---------- LANGUAGE SWITCHER LINKLERİNİ DÜZELT ----------
-  if (els.languageSwitcher) {
-    const links = els.languageSwitcher.querySelectorAll("a");
-    links.forEach((a) => {
-      const code = (a.getAttribute("href") || "")
-        .replace("?lang=", "")
-        .toLowerCase();
+  // Fix language switcher links
+  if (els.langSwitcher) {
+    els.langSwitcher.querySelectorAll("a").forEach((a) => {
+      const code = (a.getAttribute("href") || "").replace("?lang=", "").toLowerCase();
       if (!code) return;
-
       const u = new URL(window.location.href);
       u.searchParams.set("lang", code);
       u.pathname = `/${slug}${isMenuPath ? "/menu" : ""}`;
-      a.setAttribute("href", u.pathname + u.search);
+      a.href = u.pathname + u.search;
     });
   }
 
-  // ---------- STATE ----------
   const state = {
     data: null,
-    activeCategoryId: null,
-    activeSubcategoryId: null,
+    activeCatId: null,
+    activeSubId: null,
   };
 
-  // ---------- DATA YÜKLE ----------
-  async function loadData() {
+  // Fetch data
+  async function load() {
     try {
       const res = await fetch(`/restaurant/${slug}?lang=${lang}`);
-      if (!res.ok) {
-        throw new Error(`API error ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`API ${res.status}`);
       const json = await res.json();
       state.data = json;
       renderAll();
-
-      // Eğer URL /slug/menu ise direkt menüyü aç
-      if (isMenuPath) {
-        const firstCat = json.categories && json.categories[0];
-        if (firstCat) {
-          state.activeCategoryId = firstCat.id;
-          renderMenu();
-        }
+      if (isMenuPath && json.categories && json.categories[0]) {
+        state.activeCatId = json.categories[0].id;
+        renderMenu();
       }
-    } catch (err) {
-      console.error("Fetch failed:", err);
+    } catch (e) {
+      console.error("Menu load failed", e);
       if (els.homepage) {
         els.homepage.innerHTML =
           "<h2>Menü yüklenemedi</h2><p>Lütfen daha sonra tekrar deneyin.</p>";
@@ -105,137 +84,128 @@
     }
   }
 
-  // ---------- TÜM SAYFAYI RENDER ----------
   function renderAll() {
+    if (!state.data || !els.homepage) return;
     const { restaurant, categories } = state.data;
 
-    // Ana başlık
-    els.restaurantName.textContent = restaurant.name || "Our Restaurant";
-
-    // Logo / foto
-    if (restaurant.logo_url) {
-      els.restaurantPhoto.src = restaurant.logo_url;
-      els.restaurantPhoto.style.display = "block";
-    } else {
-      els.restaurantPhoto.style.display = "none";
+    if (els.name) els.name.textContent = (restaurant && restaurant.name) || "Restaurant";
+    if (els.photo) {
+      if (restaurant && restaurant.logo_url) {
+        els.photo.src = restaurant.logo_url;
+        els.photo.style.display = "block";
+      } else {
+        els.photo.style.display = "none";
+      }
+    }
+    if (els.desc) {
+      els.desc.textContent =
+        (restaurant && restaurant.about_text) ||
+        "We prepare our dishes with care, using fresh and local ingredients. Enjoy your dining experience!";
     }
 
-    // Açıklama
-    els.restaurantDescription.textContent =
-      restaurant.about_text ||
-      "We prepare our dishes with care, using fresh and local ingredients. Enjoy your dining experience!";
-
-    // Footer iletişim
-    let contactParts = [];
-    if (restaurant.phone) contactParts.push(`📞 ${restaurant.phone}`);
-    if (restaurant.address) contactParts.push(`📍 ${restaurant.address}`);
-    els.footerContact.textContent = contactParts.join(" | ") || "";
-
-    // Footer sosyal medya
-    let socials = [];
-    if (restaurant.instagram_url)
-      socials.push(
-        `<a href="${restaurant.instagram_url}" target="_blank">Instagram</a>`
-      );
-    if (restaurant.facebook_url)
-      socials.push(
-        `<a href="${restaurant.facebook_url}" target="_blank">Facebook</a>`
-      );
-    if (restaurant.website_url)
-      socials.push(
-        `<a href="${restaurant.website_url}" target="_blank">Website</a>`
-      );
-    els.footerFollow.innerHTML = socials.length
-      ? `Follow us: ${socials.join(" | ")}`
-      : "";
-
-    // Kategoriler
-    els.categoryButtons.innerHTML = "";
-    if (categories && categories.length) {
-      categories.forEach((cat) => {
-        const btn = document.createElement("button");
-        btn.className = "category-btn";
-        btn.textContent = cat.name;
-        btn.onclick = () => {
-          state.activeCategoryId = cat.id;
-          state.activeSubcategoryId = null;
-          renderMenu();
-        };
-        els.categoryButtons.appendChild(btn);
-      });
-      els.categoryButtons.style.display = "flex";
-    } else {
-      els.categoryButtons.style.display = "none";
+    // Footer contact
+    if (els.footerContact) {
+      const parts = [];
+      if (restaurant.phone) parts.push(`📞 ${restaurant.phone}`);
+      if (restaurant.address) parts.push(`📍 ${restaurant.address}`);
+      els.footerContact.textContent = parts.join(" | ");
     }
 
-    // "View Menu" butonu
-    if (els.goToMenuBtn) {
-      els.goToMenuBtn.onclick = () => {
-        if (categories && categories[0]) {
-          state.activeCategoryId = categories[0].id;
-          state.activeSubcategoryId = null;
-          renderMenu();
-        }
+    // Footer socials
+    if (els.footerFollow) {
+      const links = [];
+      if (restaurant.instagram_url)
+        links.push(`<a href="${restaurant.instagram_url}" target="_blank">Instagram</a>`);
+      if (restaurant.facebook_url)
+        links.push(`<a href="${restaurant.facebook_url}" target="_blank">Facebook</a>`);
+      if (restaurant.website_url)
+        links.push(`<a href="${restaurant.website_url}" target="_blank">Website</a>`);
+      els.footerFollow.innerHTML = links.length ? "Follow us: " + links.join(" | ") : "";
+    }
+
+    // Category buttons
+    if (els.catWrap) {
+      els.catWrap.innerHTML = "";
+      if (categories && categories.length) {
+        categories.forEach((c) => {
+          const b = document.createElement("button");
+          b.className = "category-btn";
+          b.textContent = c.name;
+          b.onclick = () => {
+            state.activeCatId = c.id;
+            state.activeSubId = null;
+            renderMenu();
+          };
+          els.catWrap.appendChild(b);
+        });
+        els.catWrap.style.display = "flex";
+      } else {
+        els.catWrap.style.display = "none";
+      }
+    }
+
+    if (els.goMenu && categories && categories[0]) {
+      els.goMenu.onclick = () => {
+        state.activeCatId = categories[0].id;
+        state.activeSubId = null;
+        renderMenu();
       };
     }
 
-    // Başlangıçta: homepage açık, menu kapalı
     showHomepage();
   }
 
-  // ---------- HOMEPAGE / MENU GÖSTERME ----------
   function showHomepage() {
-    if (!els.homepage) return;
-    els.homepage.style.display = "block";
-    els.menuContainer.style.display = "none";
-    els.subcategoryButtons.style.display = "none";
-    els.navWrapper.style.display = "none";
+    if (els.homepage) els.homepage.style.display = "block";
+    if (els.menu) els.menu.style.display = "none";
+    if (els.subWrap) els.subWrap.style.display = "none";
+    if (els.navWrap) els.navWrap.style.display = "none";
   }
 
   function showMenu() {
-    els.homepage.style.display = "none";
-    els.menuContainer.style.display = "flex";
-    els.navWrapper.style.display = "block";
+    if (els.homepage) els.homepage.style.display = "none";
+    if (els.menu) els.menu.style.display = "flex";
+    if (els.navWrap) els.navWrap.style.display = "block";
   }
 
-  // ---------- MENU RENDER ----------
   function renderMenu() {
-    const { categories, subcategories = [] } = state.data;
-    const activeCat = categories.find((c) => c.id === state.activeCategoryId);
+    const data = state.data;
+    if (!data || !els.menu) return;
+    const { categories, subcategories = [] } = data;
+    const activeCat = categories.find((c) => c.id === state.activeCatId);
     if (!activeCat) return;
 
-    // Kategori buton highlight
-    Array.from(els.categoryButtons.querySelectorAll(".category-btn")).forEach(
-      (btn) => {
-        if (btn.textContent === activeCat.name)
-          btn.classList.add("active");
+    // highlight
+    if (els.catWrap) {
+      Array.from(els.catWrap.children).forEach((btn) => {
+        if (btn.textContent === activeCat.name) btn.classList.add("active");
         else btn.classList.remove("active");
-      }
-    );
-
-    // Alt kategoriler
-    const subs = subcategories.filter(
-      (s) => s.category_id === activeCat.id
-    );
-    els.subcategoryButtons.innerHTML = "";
-    if (subs.length) {
-      subs.forEach((sc) => {
-        const b = document.createElement("button");
-        b.className = "subcategory-btn";
-        b.textContent = sc.name;
-        b.onclick = () => {
-          state.activeSubcategoryId = sc.id;
-          renderItems();
-        };
-        els.subcategoryButtons.appendChild(b);
       });
-      els.subcategoryButtons.style.display = "flex";
-    } else {
-      els.subcategoryButtons.style.display = "none";
-      state.activeSubcategoryId = null;
     }
 
-    // Geri butonları
+    // subcategories
+    const subs = subcategories.filter((s) => s.category_id === activeCat.id);
+    if (els.subWrap) {
+      els.subWrap.innerHTML = "";
+      if (subs.length) {
+        subs.forEach((sc) => {
+          const b = document.createElement("button");
+          b.className = "subcategory-btn";
+          b.textContent = sc.name;
+          b.onclick = () => {
+            state.activeSubId = sc.id;
+            renderItems();
+          };
+          els.subWrap.appendChild(b);
+        });
+        els.subWrap.style.display = "flex";
+      } else {
+        els.subWrap.style.display = "none";
+        state.activeSubId = null;
+      }
+    }
+
+    // back buttons
     if (els.btnBackHome) {
       els.btnBackHome.onclick = () => {
         showHomepage();
@@ -244,31 +214,30 @@
     }
     if (els.btnBackMenu) {
       els.btnBackMenu.onclick = () => {
-        state.activeSubcategoryId = null;
+        state.activeSubId = null;
         renderItems();
       };
     }
-    if (els.btnBackCategory && els.backCategoryName) {
-      els.backCategoryName.textContent = activeCat.name;
-      els.btnBackCategory.onclick = () => {
-        state.activeSubcategoryId = null;
+    if (els.btnBackCat && els.backCatName) {
+      els.backCatName.textContent = activeCat.name;
+      els.btnBackCat.onclick = () => {
+        state.activeSubId = null;
         renderItems();
       };
     }
 
-    // Ürünler
     renderItems();
     showMenu();
   }
 
-  // ---------- ÜRÜNLERİ RENDER ----------
   function renderItems() {
-    const { items } = state.data;
-    const catId = state.activeCategoryId;
-    const subId = state.activeSubcategoryId;
+    const data = state.data;
+    if (!data || !els.menu) return;
+    const { items } = data;
+    const catId = state.activeCatId;
+    const subId = state.activeSubId;
 
-    els.menuContainer.innerHTML = "";
-
+    els.menu.innerHTML = "";
     const filtered = items.filter((i) => {
       if (i.category_id !== catId) return false;
       if (subId && i.subcategory_id !== subId) return false;
@@ -297,49 +266,53 @@
       card.appendChild(title);
 
       if (i.description) {
-        const desc = document.createElement("p");
-        desc.textContent = i.description;
-        card.appendChild(desc);
+        const d = document.createElement("p");
+        d.textContent = i.description;
+        card.appendChild(d);
       }
 
-      if (typeof i.price !== "undefined" && i.price !== null) {
-        const price = document.createElement("p");
-        price.textContent = `${i.price} ${i.currency || ""}`;
-        card.appendChild(price);
+      if (i.price != null) {
+        const p = document.createElement("p");
+        p.className = "price-label";
+        p.textContent = `${i.price} ${i.currency || ""}`;
+        card.appendChild(p);
       }
 
-      card.onclick = () => openModal(i, catId);
-      els.menuContainer.appendChild(card);
+      card.onclick = () => openModal(i, activeCategoryName(catId));
+      els.menu.appendChild(card);
     });
   }
 
-  // ---------- MODAL ----------
-  function openModal(item, catId) {
-    if (!els.modal) return;
+  function activeCategoryName(catId) {
+    if (!state.data) return "";
+    const c = state.data.categories.find((x) => x.id === catId);
+    return c ? c.name : "";
+  }
 
+  function openModal(item, catName) {
+    if (!els.modal) return;
     els.modalTitle.textContent = item.name || "";
-    els.modalDescription.textContent = item.description || "";
+    els.modalDesc.textContent = item.description || "";
     els.modalPrice.textContent =
       item.price != null ? `${item.price} ${item.currency || ""}` : "";
-    els.modalAllergens.textContent = item.allergens
+    els.modalAll.textContent = item.allergens
       ? `Allergens: ${item.allergens}`
       : "";
 
     if (item.image_url) {
-      els.modalImage.src = item.image_url;
-      els.modalImage.style.display = "block";
+      els.modalImg.src = item.image_url;
+      els.modalImg.style.display = "block";
     } else {
-      els.modalImage.style.display = "none";
+      els.modalImg.style.display = "none";
     }
 
-    const cat = state.data.categories.find((c) => c.id === catId);
-    if (cat && els.modalBackCategoryName) {
-      els.modalBackCategoryName.textContent = cat.name;
+    if (els.modalBackCatName) {
+      els.modalBackCatName.textContent = catName || "";
     }
 
     els.modal.style.display = "block";
 
-    els.modalClose.onclick = closeModal;
+    if (els.modalClose) els.modalClose.onclick = closeModal;
     els.modal.onclick = (e) => {
       if (e.target === els.modal) closeModal();
     };
@@ -356,8 +329,8 @@
         showMenu();
       };
     }
-    if (els.modalBackCategory) {
-      els.modalBackCategory.onclick = () => {
+    if (els.modalBackCat) {
+      els.modalBackCat.onclick = () => {
         closeModal();
         showMenu();
       };
@@ -370,6 +343,5 @@
     }
   }
 
-  // ---------- START ----------
-  loadData();
-})();
+  load();
+});
