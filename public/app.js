@@ -1,347 +1,492 @@
-// public/app.js
-document.addEventListener("DOMContentLoaded", function () {
-  const url = new URL(window.location.href);
-  let lang = (url.searchParams.get("lang") || "en").toLowerCase();
+// Global State
+let state = {
+  restaurant: null,
+  categories: [],
+  subcategories: [],
+  items: [],
+  currentLang: 'en',
+  selectedCategory: null,
+  selectedSubcategory: null,
+};
 
-  const parts = window.location.pathname.split("/").filter(Boolean);
-  const slug = parts[0] || null;
-  const isMenuPath = parts[1] === "menu";
+const LANG_FLAGS = {
+  tr: '🇹🇷',
+  en: '🇬🇧',
+  es: '🇪🇸',
+  fr: '🇫🇷',
+};
 
-  if (!slug) {
-    const h = document.getElementById("homepage");
-    if (h) h.innerHTML = "<h2>QR Menü</h2><p>Geçersiz restoran bağlantısı.</p>";
+// Initialize App
+async function init() {
+  const path = window.location.pathname;
+  const urlParams = new URLSearchParams(window.location.search);
+  
+  // Get language
+  const urlLang = urlParams.get('lang');
+  const savedLang = localStorage.getItem('preferredLanguage');
+  state.currentLang = urlLang || savedLang || 'en';
+  
+  updateLanguageSwitcher();
+  
+  // Get slug
+  const pathParts = path.split('/').filter(p => p);
+  if (pathParts.length === 0) {
+    showError();
     return;
   }
-
-  // Elements
-  const els = {
-    langSwitcher: document.getElementById("language-switcher"),
-    homepage: document.getElementById("homepage"),
-    name: document.getElementById("restaurant-name"),
-    photo: document.getElementById("restaurant-photo"),
-    desc: document.getElementById("restaurant-description"),
-    goMenu: document.getElementById("go-to-menu-btn"),
-    notes: document.getElementById("notifications"),
-    catWrap: document.getElementById("category-buttons"),
-    subWrap: document.getElementById("subcategory-buttons"),
-    menu: document.getElementById("menu-container"),
-    navWrap: document.getElementById("nav-back-wrapper"),
-    btnBackHome: document.getElementById("btn-back-home"),
-    btnBackMenu: document.getElementById("btn-back-menu"),
-    btnBackCat: document.getElementById("btn-back-category"),
-    backCatName: document.getElementById("back-category-name"),
-    modal: document.getElementById("item-modal"),
-    modalClose: document.getElementById("modal-close"),
-    modalImg: document.getElementById("modal-image"),
-    modalTitle: document.getElementById("modal-title"),
-    modalDesc: document.getElementById("modal-description"),
-    modalPrice: document.getElementById("modal-price"),
-    modalAll: document.getElementById("modal-allergens"),
-    modalBackHome: document.getElementById("modal-back-home"),
-    modalBackMenu: document.getElementById("modal-back-menu"),
-    modalBackCat: document.getElementById("modal-back-category"),
-    modalBackCatName: document.getElementById("modal-back-category-name"),
-    footerContact: document.getElementById("footer-contact"),
-    footerFollow: document.getElementById("footer-follow"),
-  };
-
-  // Fix language switcher links
-  if (els.langSwitcher) {
-    els.langSwitcher.querySelectorAll("a").forEach((a) => {
-      const code = (a.getAttribute("href") || "").replace("?lang=", "").toLowerCase();
-      if (!code) return;
-      const u = new URL(window.location.href);
-      u.searchParams.set("lang", code);
-      u.pathname = `/${slug}${isMenuPath ? "/menu" : ""}`;
-      a.href = u.pathname + u.search;
-    });
-  }
-
-  const state = {
-    data: null,
-    activeCatId: null,
-    activeSubId: null,
-  };
-
+  
+  const slug = pathParts[0];
+  const isMenuPage = pathParts[1] === 'menu';
+  
+  // Get category/subcategory from URL
+  state.selectedCategory = urlParams.get('category') ? parseInt(urlParams.get('category')) : null;
+  state.selectedSubcategory = urlParams.get('subcategory') ? parseInt(urlParams.get('subcategory')) : null;
+  
   // Fetch data
-  async function load() {
-    try {
-      const res = await fetch(`/restaurant/${slug}?lang=${lang}`);
-      if (!res.ok) throw new Error(`API ${res.status}`);
-      const json = await res.json();
-      state.data = json;
-      renderAll();
-      if (isMenuPath && json.categories && json.categories[0]) {
-        state.activeCatId = json.categories[0].id;
-        renderMenu();
-      }
-    } catch (e) {
-      console.error("Menu load failed", e);
-      if (els.homepage) {
-        els.homepage.innerHTML =
-          "<h2>Menü yüklenemedi</h2><p>Lütfen daha sonra tekrar deneyin.</p>";
-      }
-    }
-  }
-
-  function renderAll() {
-    if (!state.data || !els.homepage) return;
-    const { restaurant, categories } = state.data;
-
-    if (els.name) els.name.textContent = (restaurant && restaurant.name) || "Restaurant";
-    if (els.photo) {
-      if (restaurant && restaurant.logo_url) {
-        els.photo.src = restaurant.logo_url;
-        els.photo.style.display = "block";
-      } else {
-        els.photo.style.display = "none";
-      }
-    }
-    if (els.desc) {
-      els.desc.textContent =
-        (restaurant && restaurant.about_text) ||
-        "We prepare our dishes with care, using fresh and local ingredients. Enjoy your dining experience!";
-    }
-
-    // Footer contact
-    if (els.footerContact) {
-      const parts = [];
-      if (restaurant.phone) parts.push(`📞 ${restaurant.phone}`);
-      if (restaurant.address) parts.push(`📍 ${restaurant.address}`);
-      els.footerContact.textContent = parts.join(" | ");
-    }
-
-    // Footer socials
-    if (els.footerFollow) {
-      const links = [];
-      if (restaurant.instagram_url)
-        links.push(`<a href="${restaurant.instagram_url}" target="_blank">Instagram</a>`);
-      if (restaurant.facebook_url)
-        links.push(`<a href="${restaurant.facebook_url}" target="_blank">Facebook</a>`);
-      if (restaurant.website_url)
-        links.push(`<a href="${restaurant.website_url}" target="_blank">Website</a>`);
-      els.footerFollow.innerHTML = links.length ? "Follow us: " + links.join(" | ") : "";
-    }
-
-    // Category buttons
-    if (els.catWrap) {
-      els.catWrap.innerHTML = "";
-      if (categories && categories.length) {
-        categories.forEach((c) => {
-          const b = document.createElement("button");
-          b.className = "category-btn";
-          b.textContent = c.name;
-          b.onclick = () => {
-            state.activeCatId = c.id;
-            state.activeSubId = null;
-            renderMenu();
-          };
-          els.catWrap.appendChild(b);
-        });
-        els.catWrap.style.display = "flex";
-      } else {
-        els.catWrap.style.display = "none";
-      }
-    }
-
-    if (els.goMenu && categories && categories[0]) {
-      els.goMenu.onclick = () => {
-        state.activeCatId = categories[0].id;
-        state.activeSubId = null;
-        renderMenu();
-      };
-    }
-
+  await fetchRestaurantData(slug);
+  
+  // Show appropriate page
+  if (isMenuPage) {
+    showMenuPage();
+  } else {
     showHomepage();
   }
+}
 
-  function showHomepage() {
-    if (els.homepage) els.homepage.style.display = "block";
-    if (els.menu) els.menu.style.display = "none";
-    if (els.subWrap) els.subWrap.style.display = "none";
-    if (els.navWrap) els.navWrap.style.display = "none";
+// Fetch Restaurant Data
+async function fetchRestaurantData(slug) {
+  try {
+    showLoading();
+    const response = await fetch(`/api/restaurant/${slug}?lang=${state.currentLang}`);
+    
+    if (!response.ok) {
+      throw new Error('Restaurant not found');
+    }
+    
+    const data = await response.json();
+    state.restaurant = data.restaurant;
+    state.categories = data.categories;
+    state.subcategories = data.subcategories;
+    state.items = data.items;
+    
+    hideLoading();
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    hideLoading();
+    showError();
   }
+}
 
-  function showMenu() {
-    if (els.homepage) els.homepage.style.display = "none";
-    if (els.menu) els.menu.style.display = "flex";
-    if (els.navWrap) els.navWrap.style.display = "block";
+// Show/Hide Elements
+function showLoading() {
+  document.getElementById('loading').classList.remove('hidden');
+}
+
+function hideLoading() {
+  document.getElementById('loading').classList.add('hidden');
+}
+
+function showHomepage() {
+  hideAllPages();
+  const homepage = document.getElementById('homepage');
+  homepage.classList.remove('hidden');
+  
+  renderHomepage();
+}
+
+function showMenuPage() {
+  hideAllPages();
+  const menuPage = document.getElementById('menu-page');
+  menuPage.classList.remove('hidden');
+  
+  renderMenuPage();
+}
+
+function showError() {
+  hideAllPages();
+  document.getElementById('error-page').classList.remove('hidden');
+}
+
+function hideAllPages() {
+  document.querySelectorAll('.page').forEach(page => {
+    page.classList.add('hidden');
+  });
+}
+
+// Render Homepage
+function renderHomepage() {
+  const { restaurant, categories } = state;
+  
+  // Restaurant info
+  document.getElementById('restaurant-name').textContent = restaurant.name;
+  document.getElementById('restaurant-about').textContent = restaurant.about_text || '';
+  
+  if (restaurant.logo_url) {
+    const logo = document.getElementById('restaurant-logo');
+    logo.src = restaurant.logo_url;
+    logo.classList.remove('hidden');
   }
-
-  function renderMenu() {
-    const data = state.data;
-    if (!data || !els.menu) return;
-    const { categories, subcategories = [] } = data;
-    const activeCat = categories.find((c) => c.id === state.activeCatId);
-    if (!activeCat) return;
-
-    // highlight
-    if (els.catWrap) {
-      Array.from(els.catWrap.children).forEach((btn) => {
-        if (btn.textContent === activeCat.name) btn.classList.add("active");
-        else btn.classList.remove("active");
-      });
-    }
-
-    // subcategories
-    const subs = subcategories.filter((s) => s.category_id === activeCat.id);
-    if (els.subWrap) {
-      els.subWrap.innerHTML = "";
-      if (subs.length) {
-        subs.forEach((sc) => {
-          const b = document.createElement("button");
-          b.className = "subcategory-btn";
-          b.textContent = sc.name;
-          b.onclick = () => {
-            state.activeSubId = sc.id;
-            renderItems();
-          };
-          els.subWrap.appendChild(b);
-        });
-        els.subWrap.style.display = "flex";
-      } else {
-        els.subWrap.style.display = "none";
-        state.activeSubId = null;
-      }
-    }
-
-    // back buttons
-    if (els.btnBackHome) {
-      els.btnBackHome.onclick = () => {
-        showHomepage();
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      };
-    }
-    if (els.btnBackMenu) {
-      els.btnBackMenu.onclick = () => {
-        state.activeSubId = null;
-        renderItems();
-      };
-    }
-    if (els.btnBackCat && els.backCatName) {
-      els.backCatName.textContent = activeCat.name;
-      els.btnBackCat.onclick = () => {
-        state.activeSubId = null;
-        renderItems();
-      };
-    }
-
-    renderItems();
-    showMenu();
-  }
-
-  function renderItems() {
-    const data = state.data;
-    if (!data || !els.menu) return;
-    const { items } = data;
-    const catId = state.activeCatId;
-    const subId = state.activeSubId;
-
-    els.menu.innerHTML = "";
-    const filtered = items.filter((i) => {
-      if (i.category_id !== catId) return false;
-      if (subId && i.subcategory_id !== subId) return false;
-      return true;
+  
+  // Categories grid
+  const grid = document.getElementById('categories-grid');
+  grid.innerHTML = '';
+  
+  if (categories.length > 0) {
+    const title = document.createElement('h2');
+    title.className = 'section-title';
+    title.textContent = 'Browse Our Menu';
+    grid.appendChild(title);
+    
+    const container = document.createElement('div');
+    container.className = 'categories-container';
+    
+    categories.forEach(cat => {
+      const card = document.createElement('div');
+      card.className = 'category-card';
+      card.innerHTML = `
+        <div class="category-icon">🍽️</div>
+        <div class="category-name">${cat.translatedName || cat.name}</div>
+      `;
+      card.onclick = () => navigateToMenu(cat.id);
+      container.appendChild(card);
     });
-
-    filtered.forEach((i) => {
-      const card = document.createElement("div");
-      card.className = "menu-item";
-
-      if (i.image_url) {
-        const img = document.createElement("img");
-        img.src = i.image_url;
-        img.alt = i.name;
-        card.appendChild(img);
-      }
-
-      const title = document.createElement("h3");
-      title.textContent = i.name;
-      if (i.is_new) {
-        const span = document.createElement("span");
-        span.className = "new-label";
-        span.textContent = "🆕";
-        title.appendChild(span);
-      }
-      card.appendChild(title);
-
-      if (i.description) {
-        const d = document.createElement("p");
-        d.textContent = i.description;
-        card.appendChild(d);
-      }
-
-      if (i.price != null) {
-        const p = document.createElement("p");
-        p.className = "price-label";
-        p.textContent = `${i.price} ${i.currency || ""}`;
-        card.appendChild(p);
-      }
-
-      card.onclick = () => openModal(i, activeCategoryName(catId));
-      els.menu.appendChild(card);
-    });
+    
+    grid.appendChild(container);
   }
+  
+  // Footer
+  renderFooter('footer');
+  
+  // View Menu button
+  document.getElementById('view-menu-btn').onclick = () => {
+    const slug = state.restaurant.slug;
+    window.location.href = `/${slug}/menu?lang=${state.currentLang}`;
+  };
+}
 
-  function activeCategoryName(catId) {
-    if (!state.data) return "";
-    const c = state.data.categories.find((x) => x.id === catId);
-    return c ? c.name : "";
-  }
-
-  function openModal(item, catName) {
-    if (!els.modal) return;
-    els.modalTitle.textContent = item.name || "";
-    els.modalDesc.textContent = item.description || "";
-    els.modalPrice.textContent =
-      item.price != null ? `${item.price} ${item.currency || ""}` : "";
-    els.modalAll.textContent = item.allergens
-      ? `Allergens: ${item.allergens}`
-      : "";
-
-    if (item.image_url) {
-      els.modalImg.src = item.image_url;
-      els.modalImg.style.display = "block";
+// Render Menu Page
+function renderMenuPage() {
+  const { restaurant, categories, subcategories, items } = state;
+  
+  document.getElementById('header-restaurant-name').textContent = restaurant.name;
+  
+  // Back button
+  document.getElementById('back-home-btn').onclick = () => {
+    window.location.href = `/${restaurant.slug}?lang=${state.currentLang}`;
+  };
+  
+  // Breadcrumbs
+  renderBreadcrumbs();
+  
+  // Category filters
+  if (!state.selectedCategory) {
+    renderCategoryFilters();
+    document.getElementById('subcategory-filters').classList.add('hidden');
+  } else {
+    document.getElementById('category-filters').innerHTML = '';
+    
+    // Subcategory filters
+    const subs = subcategories.filter(s => s.category_id === state.selectedCategory);
+    if (subs.length > 0 && !state.selectedSubcategory) {
+      renderSubcategoryFilters(subs);
     } else {
-      els.modalImg.style.display = "none";
+      document.getElementById('subcategory-filters').classList.add('hidden');
     }
+  }
+  
+  // Menu items
+  renderMenuItems();
+  
+  // Footer
+  renderFooter('menu-footer');
+}
 
-    if (els.modalBackCatName) {
-      els.modalBackCatName.textContent = catName || "";
-    }
-
-    els.modal.style.display = "block";
-
-    if (els.modalClose) els.modalClose.onclick = closeModal;
-    els.modal.onclick = (e) => {
-      if (e.target === els.modal) closeModal();
+function renderBreadcrumbs() {
+  const breadcrumbs = document.getElementById('breadcrumbs');
+  
+  if (!state.selectedCategory && !state.selectedSubcategory) {
+    breadcrumbs.classList.add('hidden');
+    return;
+  }
+  
+  breadcrumbs.classList.remove('hidden');
+  breadcrumbs.innerHTML = '';
+  
+  const backBtn = document.createElement('button');
+  backBtn.className = 'btn-breadcrumb';
+  backBtn.textContent = '← All Categories';
+  backBtn.onclick = () => {
+    state.selectedCategory = null;
+    state.selectedSubcategory = null;
+    updateURL();
+    renderMenuPage();
+  };
+  breadcrumbs.appendChild(backBtn);
+  
+  if (state.selectedSubcategory) {
+    const cat = state.categories.find(c => c.id === state.selectedCategory);
+    const backCatBtn = document.createElement('button');
+    backCatBtn.className = 'btn-breadcrumb';
+    backCatBtn.textContent = `← ${cat?.translatedName || cat?.name}`;
+    backCatBtn.onclick = () => {
+      state.selectedSubcategory = null;
+      updateURL();
+      renderMenuPage();
     };
-
-    if (els.modalBackHome) {
-      els.modalBackHome.onclick = () => {
-        closeModal();
-        showHomepage();
-      };
-    }
-    if (els.modalBackMenu) {
-      els.modalBackMenu.onclick = () => {
-        closeModal();
-        showMenu();
-      };
-    }
-    if (els.modalBackCat) {
-      els.modalBackCat.onclick = () => {
-        closeModal();
-        showMenu();
-      };
-    }
+    breadcrumbs.appendChild(backCatBtn);
   }
+}
 
-  function closeModal() {
-    if (els.modal) {
-      els.modal.style.display = "none";
-    }
+function renderCategoryFilters() {
+  const container = document.getElementById('category-filters');
+  container.innerHTML = '<h2 class="section-title">Categories</h2>';
+  
+  const btnsContainer = document.createElement('div');
+  btnsContainer.className = 'filter-buttons';
+  
+  state.categories.forEach(cat => {
+    const btn = document.createElement('button');
+    btn.className = 'btn-filter';
+    btn.textContent = cat.translatedName || cat.name;
+    btn.onclick = () => {
+      state.selectedCategory = cat.id;
+      state.selectedSubcategory = null;
+      updateURL();
+      renderMenuPage();
+    };
+    btnsContainer.appendChild(btn);
+  });
+  
+  container.appendChild(btnsContainer);
+}
+
+function renderSubcategoryFilters(subs) {
+  const container = document.getElementById('subcategory-filters');
+  container.classList.remove('hidden');
+  
+  const cat = state.categories.find(c => c.id === state.selectedCategory);
+  container.innerHTML = `<h2 class="section-title">${cat?.translatedName || cat?.name}</h2>`;
+  
+  const btnsContainer = document.createElement('div');
+  btnsContainer.className = 'filter-buttons';
+  
+  subs.forEach(sub => {
+    const btn = document.createElement('button');
+    btn.className = 'btn-filter btn-filter-secondary';
+    btn.textContent = sub.translatedName || sub.name;
+    btn.onclick = () => {
+      state.selectedSubcategory = sub.id;
+      updateURL();
+      renderMenuPage();
+    };
+    btnsContainer.appendChild(btn);
+  });
+  
+  container.appendChild(btnsContainer);
+}
+
+function renderMenuItems() {
+  const container = document.getElementById('menu-items');
+  
+  let filteredItems = state.items;
+  
+  if (state.selectedSubcategory) {
+    filteredItems = state.items.filter(i => i.subcategory_id === state.selectedSubcategory);
+  } else if (state.selectedCategory) {
+    filteredItems = state.items.filter(i => i.category_id === state.selectedCategory);
   }
+  
+  if (filteredItems.length === 0) {
+    container.innerHTML = '<p class="no-items">No items found in this category.</p>';
+    return;
+  }
+  
+  container.innerHTML = '';
+  
+  filteredItems.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'menu-item-card';
+    
+    const displayName = item.translatedName || item.name;
+    const displayDesc = item.translatedDescription || item.description;
+    
+    card.innerHTML = `
+      ${item.image_url ? `
+        <div class="item-image-container">
+          <img src="${item.image_url}" alt="${displayName}" class="item-image">
+          ${item.is_new ? '<span class="new-badge">🆕 NEW</span>' : ''}
+        </div>
+      ` : ''}
+      <div class="item-content">
+        <div class="item-header">
+          <h3 class="item-name">
+            ${displayName}
+            ${item.is_new && !item.image_url ? '<span class="new-badge-inline">🆕</span>' : ''}
+          </h3>
+          <span class="item-price">${parseFloat(item.price).toFixed(2)} ${item.currency}</span>
+        </div>
+        ${displayDesc ? `<p class="item-description">${displayDesc}</p>` : ''}
+        ${item.allergens ? `
+          <div class="item-allergens">
+            ${item.allergens.split(',').slice(0, 3).map(a => 
+              `<span class="allergen-badge">${a.trim()}</span>`
+            ).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `;
+    
+    card.onclick = () => showModal(item);
+    container.appendChild(card);
+  });
+}
 
-  load();
+function renderFooter(containerId) {
+  const footer = document.getElementById(containerId);
+  const { restaurant } = state;
+  
+  footer.innerHTML = `
+    <div class="footer-content">
+      <div class="footer-section">
+        <h3>Contact</h3>
+        ${restaurant.phone ? `<p>📞 <a href="tel:${restaurant.phone}">${restaurant.phone}</a></p>` : ''}
+        ${restaurant.address ? `<p>📍 ${restaurant.address}</p>` : ''}
+        ${restaurant.opening_hours ? `<p>🕐 ${restaurant.opening_hours}</p>` : ''}
+      </div>
+      <div class="footer-section">
+        <h3>About</h3>
+        <p>${restaurant.about_text || `Welcome to ${restaurant.name}`}</p>
+      </div>
+      <div class="footer-section">
+        <h3>Follow Us</h3>
+        <div class="social-links">
+          ${restaurant.instagram_url ? `<a href="${restaurant.instagram_url}" target="_blank">Instagram</a>` : ''}
+          ${restaurant.facebook_url ? `<a href="${restaurant.facebook_url}" target="_blank">Facebook</a>` : ''}
+          ${restaurant.website_url ? `<a href="${restaurant.website_url}" target="_blank">Website</a>` : ''}
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© ${new Date().getFullYear()} ${restaurant.name}. All rights reserved.</p>
+    </div>
+  `;
+}
+
+// Modal
+function showModal(item) {
+  const modal = document.getElementById('modal');
+  const displayName = item.translatedName || item.name;
+  const displayDesc = item.translatedDescription || item.description;
+  
+  document.getElementById('modal-title').textContent = displayName;
+  document.getElementById('modal-description').textContent = displayDesc || 'No description available.';
+  document.getElementById('modal-price').textContent = `${parseFloat(item.price).toFixed(2)} ${item.currency}`;
+  
+  const modalImage = document.getElementById('modal-image');
+  if (item.image_url) {
+    modalImage.src = item.image_url;
+    modalImage.classList.remove('hidden');
+  } else {
+    modalImage.classList.add('hidden');
+  }
+  
+  const allergensDiv = document.getElementById('modal-allergens');
+  if (item.allergens) {
+    const allergensList = item.allergens.split(',').map(a => a.trim());
+    allergensDiv.innerHTML = `
+      <span class="allergens-label">Allergens:</span>
+      ${allergensList.map(a => `<span class="allergen-badge">${a}</span>`).join('')}
+    `;
+    allergensDiv.classList.remove('hidden');
+  } else {
+    allergensDiv.classList.add('hidden');
+  }
+  
+  modal.classList.remove('hidden');
+}
+
+function hideModal() {
+  document.getElementById('modal').classList.add('hidden');
+}
+
+document.getElementById('modal-close').onclick = hideModal;
+document.querySelector('.modal-overlay').onclick = hideModal;
+
+// Language Switcher
+function updateLanguageSwitcher() {
+  document.getElementById('current-lang-flag').textContent = LANG_FLAGS[state.currentLang];
+  document.getElementById('current-lang-code').textContent = state.currentLang.toUpperCase();
+}
+
+document.getElementById('lang-btn').onclick = () => {
+  document.getElementById('lang-dropdown').classList.toggle('hidden');
+};
+
+document.querySelectorAll('.lang-option').forEach(btn => {
+  btn.onclick = () => {
+    const lang = btn.dataset.lang;
+    state.currentLang = lang;
+    localStorage.setItem('preferredLanguage', lang);
+    updateLanguageSwitcher();
+    document.getElementById('lang-dropdown').classList.add('hidden');
+    
+    // Update URL and reload
+    const url = new URL(window.location.href);
+    url.searchParams.set('lang', lang);
+    window.history.replaceState({}, '', url);
+    
+    // Reload data
+    const slug = window.location.pathname.split('/')[1];
+    fetchRestaurantData(slug).then(() => {
+      const isMenuPage = window.location.pathname.includes('/menu');
+      if (isMenuPage) {
+        renderMenuPage();
+      } else {
+        renderHomepage();
+      }
+    });
+  };
 });
+
+// Utility Functions
+function navigateToMenu(categoryId = null) {
+  const slug = state.restaurant.slug;
+  let url = `/${slug}/menu?lang=${state.currentLang}`;
+  if (categoryId) {
+    url += `&category=${categoryId}`;
+  }
+  window.location.href = url;
+}
+
+function updateURL() {
+  const slug = state.restaurant.slug;
+  const url = new URL(window.location.href);
+  url.searchParams.set('lang', state.currentLang);
+  
+  if (state.selectedCategory) {
+    url.searchParams.set('category', state.selectedCategory);
+  } else {
+    url.searchParams.delete('category');
+  }
+  
+  if (state.selectedSubcategory) {
+    url.searchParams.set('subcategory', state.selectedSubcategory);
+  } else {
+    url.searchParams.delete('subcategory');
+  }
+  
+  window.history.replaceState({}, '', url);
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+  const switcher = document.getElementById('language-switcher');
+  const dropdown = document.getElementById('lang-dropdown');
+  
+  if (!switcher.contains(e.target)) {
+    dropdown.classList.add('hidden');
+  }
+});
+
+// Initialize on load
+window.addEventListener('DOMContentLoaded', init);

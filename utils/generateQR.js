@@ -1,42 +1,32 @@
 const QRCode = require('qrcode');
-const path = require('path');
-const fs = require('fs');
-const db = require('../config/db');
+const pool = require('../config/db');
 
-async function generateQR(restaurantId) {
+async function generateQRCode(restaurantId) {
   try {
-    // Veritabanından slug'ı al
-    const [rows] = await db.promise().query(
+    const [rows] = await pool.query(
       'SELECT slug FROM restaurants WHERE id = ?',
       [restaurantId]
     );
 
-    if (rows.length === 0) {
-      throw new Error('Slug bulunamadı.');
+    if (!rows || rows.length === 0) {
+      throw new Error('Restaurant not found');
     }
 
     const slug = rows[0].slug;
+    const baseUrl = process.env.BASE_URL || 'https://web-production-9446f.up.railway.app';
+    const fullUrl = `${baseUrl}/${slug}`;
 
-    // Railway domain'iniz
-    const baseUrl = 'https://web-production-9446f.up.railway.app';
-
-    const fullUrl = `${baseUrl}/${slug}/menu`;
-
-    const qrPath = path.join(__dirname, '../public/qr', `qr_${restaurantId}.png`);
-
-    await QRCode.toFile(qrPath, fullUrl, {
-      color: {
-        dark: '#000000',
-        light: '#ffffff',
-      },
+    const qrDataUrl = await QRCode.toDataURL(fullUrl, {
+      color: { dark: '#000000', light: '#ffffff' },
       width: 300,
+      margin: 2,
     });
 
-    return `/qr/qr_${restaurantId}.png`;
+    return qrDataUrl;
   } catch (err) {
-    console.error('❌ QR kod üretme hatası:', err);
+    console.error('❌ QR generation error:', err);
     throw err;
   }
 }
 
-module.exports = generateQR;
+module.exports = generateQRCode;

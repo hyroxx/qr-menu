@@ -1,70 +1,63 @@
-// src/server.js
-require("dotenv").config();
-const path = require("path");
-const express = require("express");
-const cors = require("cors");
-
-// DB health sadece healthz için okunuyor; router'lar kendi içinde pool kullanmalı
-const { isDbHealthy } = require("../config/db");
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+require('dotenv').config();
+require('../config/db'); // Initialize MySQL connection
 
 const app = express();
 
-// --- Genel middleware
+// Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- Statik dosyalar
-const PUBLIC_DIR = path.join(__dirname, "..", "public");
-app.use(express.static(PUBLIC_DIR, { maxAge: "1h", etag: true }));
+// Static files
+app.use(express.static(path.join(__dirname, '../public')));
+app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 
-// --- Health (DB'yi beklemeden 200 döner; durum bilgisini de ekler)
-app.get("/healthz", (req, res) => {
-  res.json({ ok: true, db: isDbHealthy() ? "up" : "down" });
-});
+// API Routes
+app.use('/api/restaurant', require('../routes/restaurants'));
+app.use('/api/qrcode', require('../routes/qrcode'));
 
-// --- API router'ları (ÖNCE tanımla ki slug rotaları gölge düşürmesin)
-const restaurantsRouter = require("../routes/restaurants");
-
-// customerMenu opsiyonel; yoksa app çökmesin
-let customerMenuRouter = (req, res, next) => next();
-try {
-  customerMenuRouter = require("../routes/customerMenu");
-} catch {
-  console.warn("ℹ️ routes/customerMenu bulunamadı, atlanıyor.");
-}
-
-app.use("/restaurant", restaurantsRouter);
-app.use("/api/customer-menu", customerMenuRouter);
-
-// --- SPA (slug bazlı sayfalar)
-const serveIndex = (_req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "index.html"));
-};
-
-// Restoran ana sayfası
-app.get("/:slug", serveIndex);
-// Menü sayfası
-app.get("/:slug/menu", serveIndex);
-// Slug alt yolları
-app.get("/:slug/*", serveIndex);
-
-// --- API 404 (yalnızca API yolları için)
-app.use((req, res, next) => {
-  if (req.path.startsWith("/restaurant") || req.path.startsWith("/api")) {
-    return res.status(404).json({ error: "not_found" });
+// Get all restaurants
+const pool = require('../config/db');
+app.get('/api/restaurants', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT id, slug, name, logo_url FROM restaurants ORDER BY name ASC'
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('❌ Restaurants list error:', err);
+    res.status(500).json({ error: 'server_error' });
   }
-  return serveIndex(req, res); // SPA fallback
 });
 
-// --- Genel hata yakalayıcı
-app.use((err, _req, res, _next) => {
-  console.error("❌ Unhandled error:", err);
-  res.status(500).json({ error: "server_error", detail: String(err) });
+// Image upload
+const upload = require('../middleware/upload');
+app.post('/api/upload', upload.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    res.json({ imageUrl: `/uploads/${req.file.filename}` });
+  } catch (err) {
+    console.error('❌ Upload error:', err);
+    res.status(500).json({ error: 'Upload failed' });
+  }
 });
 
-// --- Port
-const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
+// Serve SPA for restaurant routes
+app.get('/:slug', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+app.get('/:slug/menu', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+// Start server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on port ${PORT}`);
 });

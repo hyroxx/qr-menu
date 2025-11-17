@@ -1,358 +1,106 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QR Menü</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/style.css" />
-  <style>
-    body {
-      font-family: 'Inter', sans-serif;
-      margin: 0;
-      padding: 0;
-      background: #f9f9f9;
-      color: #111;
-    }
-
-    /* 🌍 Dil Butonları */
-    #language-switcher {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      z-index: 1000;
-      background: rgba(255,255,255,0.9);
-      padding: 4px 6px;
-      border-radius: 999px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-    }
-
-    #language-switcher a {
-      margin: 0 4px;
-      text-decoration: none;
-      font-size: 18px;
-      cursor: pointer;
-    }
-
-    /* 🏠 Ana Sayfa */
-    #homepage {
-      text-align: center;
-      padding: 80px 20px 30px;
-    }
-
-    #restaurant-name {
-      font-size: 2rem;
-      margin-bottom: 10px;
-    }
-
-    #restaurant-photo {
-      max-width: 480px;
-      width: 90%;
-      border-radius: 16px;
-      margin: 20px auto 10px;
-      display: none;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.12);
-    }
-
-    #restaurant-description {
-      max-width: 700px;
-      margin: 10px auto 10px;
-      font-size: 0.98rem;
-      line-height: 1.5;
-      color: #444;
-    }
-
-    #go-to-menu-btn {
-      background-color: #111;
-      color: #fff;
-      padding: 12px 26px;
-      font-size: 15px;
-      border: none;
-      border-radius: 999px;
-      cursor: pointer;
-      margin-top: 8px;
-      transition: all 0.2s ease;
-    }
-
-    #go-to-menu-btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 3px 10px rgba(0,0,0,0.18);
-    }
-
-    /* 🔔 Notifications */
-    #notifications {
-      display: none;
-      background-color: #fffae6;
-      color: #333;
-      padding: 8px 14px;
-      text-align: center;
-      font-size: 0.9rem;
-    }
-
-    /* 📋 Kategoriler */
-    #category-buttons {
-      display: none;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin: 10px 8px 0;
-      gap: 6px;
-    }
-
-    .category-btn {
-      background-color: #eee;
-      padding: 8px 16px;
-      border-radius: 999px;
-      border: none;
-      font-size: 14px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .category-btn.active {
-      background-color: #111;
-      color: #fff;
-    }
-
-    /* 📋 Alt Kategoriler */
-    #subcategory-buttons {
-      display: none;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin: 8px;
-      gap: 6px;
-    }
-
-    .subcategory-btn {
-      background-color: #ddd;
-      padding: 6px 14px;
-      border-radius: 999px;
-      border: none;
-      font-size: 13px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .subcategory-btn.active {
-      background-color: #333;
-      color: #fff;
-    }
-
-    /* 🍱 Menü Grid */
-    #menu-container {
-      display: none;
-      flex-wrap: wrap;
-      justify-content: center;
-      padding: 16px 10px 30px;
-      gap: 10px;
-    }
-
-    .menu-item {
-      width: 210px;
-      background-color: #fff;
-      border-radius: 14px;
-      overflow: hidden;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      cursor: pointer;
-      transition: transform 0.18s ease, box-shadow 0.18s ease;
-    }
-
-    .menu-item:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 6px 16px rgba(0,0,0,0.16);
-    }
-
-    .menu-item img {
-      width: 100%;
-      height: 130px;
-      object-fit: cover;
-    }
-
-    .menu-item h3 {
-      margin: 8px 10px 4px;
-      font-size: 15px;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .menu-item p {
-      margin: 0 10px 7px;
-      font-size: 12px;
-      color: #666;
-    }
-
-    .price-label {
-      font-weight: 600;
-      color: #111;
-    }
-
-    .new-label {
-      color: #e53935;
-      font-weight: 700;
-      font-size: 11px;
-    }
-
-    /* 🧭 Geri Butonları */
-    #nav-back-wrapper {
-      display: none;
-      text-align: center;
-      margin-top: 4px;
-    }
-
-    #nav-back-wrapper button {
-      margin: 4px;
-      padding: 6px 12px;
-      border: none;
-      border-radius: 999px;
-      background-color: #333;
-      color: #fff;
-      font-size: 11px;
-      cursor: pointer;
-    }
-
-    /* 🖼️ Modal */
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 999;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      overflow: auto;
-      background-color: rgba(0,0,0,0.45);
-    }
-
-    .modal-content {
-      background-color: #fff;
-      margin: 60px auto;
-      padding: 14px;
-      border-radius: 14px;
-      width: 92%;
-      max-width: 420px;
-      text-align: left;
-      position: relative;
-    }
-
-    .modal-content img {
-      width: 100%;
-      border-radius: 10px;
-      margin-bottom: 8px;
-    }
-
-    .close {
-      position: absolute;
-      right: 10px;
-      top: 6px;
-      font-size: 22px;
-      cursor: pointer;
-      color: #777;
-    }
-
-    .modal-nav {
-      margin-top: 8px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-
-    .modal-nav button {
-      padding: 5px 10px;
-      border-radius: 999px;
-      border: none;
-      background-color: #111;
-      color: #fff;
-      font-size: 10px;
-      cursor: pointer;
-    }
-
-    /* 📞 Footer */
-    footer {
-      text-align: center;
-      padding: 16px 8px 22px;
-      background-color: #111;
-      color: #eee;
-      font-size: 11px;
-    }
-
-    footer a {
-      color: #f5f5f5;
-      margin: 0 4px;
-      text-decoration: none;
-      font-size: 11px;
-    }
-
-    @media (max-width: 600px) {
-      #homepage {
-        padding-top: 70px;
-      }
-      .menu-item {
-        width: 45%;
-      }
-      .menu-item h3 {
-        font-size: 13px;
-      }
-    }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Menu</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <!-- 🌍 Dil Seçimi -->
-  <div id="language-switcher">
-    <a href="?lang=tr">🇹🇷</a>
-    <a href="?lang=en">🇬🇧</a>
-    <a href="?lang=es">🇪🇸</a>
-    <a href="?lang=fr">🇫🇷</a>
+  <!-- Language Switcher (Fixed) -->
+  <div id="language-switcher" class="language-switcher">
+    <button id="lang-btn" class="lang-btn">
+      <span id="current-lang-flag">🇬🇧</span>
+      <span id="current-lang-code">EN</span>
+      <span class="arrow">▼</span>
+    </button>
+    <div id="lang-dropdown" class="lang-dropdown hidden">
+      <button class="lang-option" data-lang="tr">🇹🇷 Türkçe</button>
+      <button class="lang-option" data-lang="en">🇬🇧 English</button>
+      <button class="lang-option" data-lang="es">🇪🇸 Español</button>
+      <button class="lang-option" data-lang="fr">🇫🇷 Français</button>
+    </div>
   </div>
 
-  <!-- 🏠 Restoran Ana Sayfa -->
-  <div id="homepage">
-    <h1 id="restaurant-name">Loading...</h1>
-    <img id="restaurant-photo" src="" alt="Restaurant" />
-    <p id="restaurant-description">
-      Please wait while we load the menu.
-    </p>
-    <button id="go-to-menu-btn">🍽️ View Menu</button>
-  </div>
+  <!-- Main Container -->
+  <div id="app">
+    <!-- Loading State -->
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>Loading...</p>
+    </div>
 
-  <!-- 🔔 Bildirim -->
-  <div id="notifications"></div>
+    <!-- Homepage -->
+    <div id="homepage" class="page hidden">
+      <div class="hero">
+        <img id="restaurant-logo" class="restaurant-logo hidden" src="" alt="Logo">
+        <h1 id="restaurant-name" class="restaurant-name"></h1>
+        <p id="restaurant-about" class="restaurant-about"></p>
+        <button id="view-menu-btn" class="btn btn-primary">
+          🍽️ View Menu
+        </button>
+      </div>
 
-  <!-- 📋 Kategori & Alt Kategori -->
-  <div id="category-buttons"></div>
-  <div id="subcategory-buttons"></div>
+      <div id="categories-grid" class="categories-grid"></div>
 
-  <!-- 🍱 Menü Grid -->
-  <div id="menu-container"></div>
+      <footer id="footer" class="footer"></footer>
+    </div>
 
-  <!-- 🧭 Navigation -->
-  <div id="nav-back-wrapper">
-    <button id="btn-back-home">🏠 Home</button>
-    <button id="btn-back-menu">⬅ Menu</button>
-    <button id="btn-back-category">⬅ <span id="back-category-name"></span></button>
-  </div>
+    <!-- Menu Page -->
+    <div id="menu-page" class="page hidden">
+      <header class="menu-header">
+        <button id="back-home-btn" class="btn-back">
+          ← <span id="header-restaurant-name"></span>
+        </button>
+      </header>
 
-  <!-- 🖼️ Modal -->
-  <div id="item-modal" class="modal">
-    <div class="modal-content">
-      <span id="modal-close" class="close">&times;</span>
-      <img id="modal-image" src="" alt="" />
-      <h2 id="modal-title"></h2>
-      <p id="modal-description"></p>
-      <p id="modal-price"></p>
-      <p id="modal-allergens"></p>
-      <div class="modal-nav">
-        <button id="modal-back-home">🏠 Home</button>
-        <button id="modal-back-menu">⬅ Menu</button>
-        <button id="modal-back-category">⬅ <span id="modal-back-category-name"></span></button>
+      <div class="menu-container">
+        <!-- Navigation Breadcrumbs -->
+        <div id="breadcrumbs" class="breadcrumbs hidden"></div>
+
+        <!-- Category Filters -->
+        <div id="category-filters" class="category-filters"></div>
+
+        <!-- Subcategory Filters -->
+        <div id="subcategory-filters" class="subcategory-filters hidden"></div>
+
+        <!-- Menu Items Grid -->
+        <div id="menu-items" class="menu-items-grid"></div>
+      </div>
+
+      <footer id="menu-footer" class="footer"></footer>
+    </div>
+
+    <!-- Error Page -->
+    <div id="error-page" class="page hidden">
+      <div class="error-content">
+        <h1>404</h1>
+        <h2>Restaurant Not Found</h2>
+        <p>The restaurant you're looking for doesn't exist or the URL is incorrect.</p>
       </div>
     </div>
   </div>
 
-  <!-- 📞 Footer -->
-  <footer>
-    <p id="footer-contact"></p>
-    <p id="footer-follow"></p>
-  </footer>
+  <!-- Modal -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <button id="modal-close" class="modal-close">×</button>
+      <img id="modal-image" class="modal-image hidden" src="" alt="">
+      <div class="modal-body">
+        <h2 id="modal-title"></h2>
+        <p id="modal-description"></p>
+        <div class="modal-price-section">
+          <span class="modal-price-label">Price</span>
+          <span id="modal-price" class="modal-price"></span>
+        </div>
+        <div id="modal-allergens" class="modal-allergens hidden"></div>
+      </div>
+    </div>
+  </div>
 
   <script src="/app.js"></script>
 </body>
