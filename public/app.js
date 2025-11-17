@@ -16,19 +16,79 @@ const LANG_FLAGS = {
   fr: '🇫🇷',
 };
 
-// Initialize App
+const TRANSLATIONS = {
+  en: {
+    viewMenu: 'View Menu',
+    ourStory: 'Our Story',
+    categories: 'Categories',
+    backHome: 'Back to Home',
+    price: 'Price',
+    allergens: 'Allergens',
+    noItems: 'No items found in this category.',
+    contact: 'Contact',
+    about: 'About',
+    followUs: 'Follow Us',
+    notFound: 'Restaurant Not Found',
+    notFoundMsg: "The restaurant you're looking for doesn't exist.",
+  },
+  tr: {
+    viewMenu: 'Menüyü Gör',
+    ourStory: 'Hikayemiz',
+    categories: 'Kategoriler',
+    backHome: 'Ana Sayfaya Dön',
+    price: 'Fiyat',
+    allergens: 'Alerjenler',
+    noItems: 'Bu kategoride ürün bulunamadı.',
+    contact: 'İletişim',
+    about: 'Hakkımızda',
+    followUs: 'Bizi Takip Edin',
+    notFound: 'Restoran Bulunamadı',
+    notFoundMsg: 'Aradığınız restoran mevcut değil.',
+  },
+  es: {
+    viewMenu: 'Ver Menú',
+    ourStory: 'Nuestra Historia',
+    categories: 'Categorías',
+    backHome: 'Volver al Inicio',
+    price: 'Precio',
+    allergens: 'Alérgenos',
+    noItems: 'No se encontraron artículos en esta categoría.',
+    contact: 'Contacto',
+    about: 'Acerca de',
+    followUs: 'Síguenos',
+    notFound: 'Restaurante No Encontrado',
+    notFoundMsg: 'El restaurante que buscas no existe.',
+  },
+  fr: {
+    viewMenu: 'Voir le Menu',
+    ourStory: 'Notre Histoire',
+    categories: 'Catégories',
+    backHome: "Retour à l'Accueil",
+    price: 'Prix',
+    allergens: 'Allergènes',
+    noItems: 'Aucun article trouvé dans cette catégorie.',
+    contact: 'Contact',
+    about: 'À Propos',
+    followUs: 'Suivez-Nous',
+    notFound: 'Restaurant Non Trouvé',
+    notFoundMsg: "Le restaurant que vous cherchez n'existe pas.",
+  },
+};
+
+function t(key) {
+  return TRANSLATIONS[state.currentLang][key] || TRANSLATIONS.en[key] || key;
+}
+
 async function init() {
   const path = window.location.pathname;
   const urlParams = new URLSearchParams(window.location.search);
   
-  // Get language
   const urlLang = urlParams.get('lang');
   const savedLang = localStorage.getItem('preferredLanguage');
   state.currentLang = urlLang || savedLang || 'en';
   
   updateLanguageSwitcher();
   
-  // Get slug
   const pathParts = path.split('/').filter(p => p);
   if (pathParts.length === 0) {
     showError();
@@ -38,14 +98,11 @@ async function init() {
   const slug = pathParts[0];
   const isMenuPage = pathParts[1] === 'menu';
   
-  // Get category/subcategory from URL
   state.selectedCategory = urlParams.get('category') ? parseInt(urlParams.get('category')) : null;
   state.selectedSubcategory = urlParams.get('subcategory') ? parseInt(urlParams.get('subcategory')) : null;
   
-  // Fetch data
   await fetchRestaurantData(slug);
   
-  // Show appropriate page
   if (isMenuPage) {
     showMenuPage();
   } else {
@@ -53,7 +110,6 @@ async function init() {
   }
 }
 
-// Fetch Restaurant Data
 async function fetchRestaurantData(slug) {
   try {
     showLoading();
@@ -77,20 +133,18 @@ async function fetchRestaurantData(slug) {
   }
 }
 
-// Show/Hide Elements
 function showLoading() {
-  document.getElementById('loading').classList.remove('hidden');
+  document.body.style.cursor = 'wait';
 }
 
 function hideLoading() {
-  document.getElementById('loading').classList.add('hidden');
+  document.body.style.cursor = 'default';
 }
 
 function showHomepage() {
   hideAllPages();
   const homepage = document.getElementById('homepage');
   homepage.classList.remove('hidden');
-  
   renderHomepage();
 }
 
@@ -98,13 +152,15 @@ function showMenuPage() {
   hideAllPages();
   const menuPage = document.getElementById('menu-page');
   menuPage.classList.remove('hidden');
-  
   renderMenuPage();
 }
 
 function showError() {
   hideAllPages();
-  document.getElementById('error-page').classList.remove('hidden');
+  const errorPage = document.getElementById('error-page');
+  errorPage.classList.remove('hidden');
+  document.getElementById('error-title').textContent = t('notFound');
+  document.getElementById('error-message').textContent = t('notFoundMsg');
 }
 
 function hideAllPages() {
@@ -113,13 +169,15 @@ function hideAllPages() {
   });
 }
 
-// Render Homepage
 function renderHomepage() {
-  const { restaurant, categories } = state;
+  const { restaurant } = state;
   
-  // Restaurant info
   document.getElementById('restaurant-name').textContent = restaurant.name;
-  document.getElementById('restaurant-about').textContent = restaurant.about_text || '';
+  
+  const heroImage = document.getElementById('hero-image');
+  if (restaurant.logo_url) {
+    heroImage.style.backgroundImage = `url(${restaurant.logo_url})`;
+  }
   
   if (restaurant.logo_url) {
     const logo = document.getElementById('restaurant-logo');
@@ -127,66 +185,36 @@ function renderHomepage() {
     logo.classList.remove('hidden');
   }
   
-  // Categories grid
-  const grid = document.getElementById('categories-grid');
-  grid.innerHTML = '';
+  document.getElementById('story-title').textContent = t('ourStory');
+  document.getElementById('restaurant-about').textContent = restaurant.about_text || '';
   
-  if (categories.length > 0) {
-    const title = document.createElement('h2');
-    title.className = 'section-title';
-    title.textContent = 'Browse Our Menu';
-    grid.appendChild(title);
-    
-    const container = document.createElement('div');
-    container.className = 'categories-container';
-    
-    categories.forEach(cat => {
-      const card = document.createElement('div');
-      card.className = 'category-card';
-      card.innerHTML = `
-        <div class="category-icon">🍽️</div>
-        <div class="category-name">${cat.translatedName || cat.name}</div>
-      `;
-      card.onclick = () => navigateToMenu(cat.id);
-      container.appendChild(card);
-    });
-    
-    grid.appendChild(container);
-  }
+  document.getElementById('view-menu-text').textContent = t('viewMenu');
   
-  // Footer
   renderFooter('footer');
   
-  // View Menu button
   document.getElementById('view-menu-btn').onclick = () => {
     const slug = state.restaurant.slug;
     window.location.href = `/${slug}/menu?lang=${state.currentLang}`;
   };
 }
 
-// Render Menu Page
 function renderMenuPage() {
-  const { restaurant, categories, subcategories, items } = state;
+  const { restaurant } = state;
   
   document.getElementById('header-restaurant-name').textContent = restaurant.name;
   
-  // Back button
   document.getElementById('back-home-btn').onclick = () => {
     window.location.href = `/${restaurant.slug}?lang=${state.currentLang}`;
   };
   
-  // Breadcrumbs
   renderBreadcrumbs();
   
-  // Category filters
   if (!state.selectedCategory) {
     renderCategoryFilters();
     document.getElementById('subcategory-filters').classList.add('hidden');
   } else {
     document.getElementById('category-filters').innerHTML = '';
-    
-    // Subcategory filters
-    const subs = subcategories.filter(s => s.category_id === state.selectedCategory);
+    const subs = state.subcategories.filter(s => s.category_id === state.selectedCategory);
     if (subs.length > 0 && !state.selectedSubcategory) {
       renderSubcategoryFilters(subs);
     } else {
@@ -194,10 +222,7 @@ function renderMenuPage() {
     }
   }
   
-  // Menu items
   renderMenuItems();
-  
-  // Footer
   renderFooter('menu-footer');
 }
 
@@ -214,7 +239,7 @@ function renderBreadcrumbs() {
   
   const backBtn = document.createElement('button');
   backBtn.className = 'btn-breadcrumb';
-  backBtn.textContent = '← All Categories';
+  backBtn.textContent = `← ${t('categories')}`;
   backBtn.onclick = () => {
     state.selectedCategory = null;
     state.selectedSubcategory = null;
@@ -227,7 +252,7 @@ function renderBreadcrumbs() {
     const cat = state.categories.find(c => c.id === state.selectedCategory);
     const backCatBtn = document.createElement('button');
     backCatBtn.className = 'btn-breadcrumb';
-    backCatBtn.textContent = `← ${cat?.translatedName || cat?.name}`;
+    backCatBtn.textContent = `← ${cat?.name || ''}`;
     backCatBtn.onclick = () => {
       state.selectedSubcategory = null;
       updateURL();
@@ -239,7 +264,7 @@ function renderBreadcrumbs() {
 
 function renderCategoryFilters() {
   const container = document.getElementById('category-filters');
-  container.innerHTML = '<h2 class="section-title">Categories</h2>';
+  container.innerHTML = `<h2 class="section-title">${t('categories')}</h2>`;
   
   const btnsContainer = document.createElement('div');
   btnsContainer.className = 'filter-buttons';
@@ -247,7 +272,7 @@ function renderCategoryFilters() {
   state.categories.forEach(cat => {
     const btn = document.createElement('button');
     btn.className = 'btn-filter';
-    btn.textContent = cat.translatedName || cat.name;
+    btn.textContent = cat.name;
     btn.onclick = () => {
       state.selectedCategory = cat.id;
       state.selectedSubcategory = null;
@@ -265,7 +290,7 @@ function renderSubcategoryFilters(subs) {
   container.classList.remove('hidden');
   
   const cat = state.categories.find(c => c.id === state.selectedCategory);
-  container.innerHTML = `<h2 class="section-title">${cat?.translatedName || cat?.name}</h2>`;
+  container.innerHTML = `<h2 class="section-title">${cat?.name || ''}</h2>`;
   
   const btnsContainer = document.createElement('div');
   btnsContainer.className = 'filter-buttons';
@@ -273,7 +298,7 @@ function renderSubcategoryFilters(subs) {
   subs.forEach(sub => {
     const btn = document.createElement('button');
     btn.className = 'btn-filter btn-filter-secondary';
-    btn.textContent = sub.translatedName || sub.name;
+    btn.textContent = sub.name;
     btn.onclick = () => {
       state.selectedSubcategory = sub.id;
       updateURL();
@@ -297,7 +322,7 @@ function renderMenuItems() {
   }
   
   if (filteredItems.length === 0) {
-    container.innerHTML = '<p class="no-items">No items found in this category.</p>';
+    container.innerHTML = `<p class="no-items">${t('noItems')}</p>`;
     return;
   }
   
@@ -307,25 +332,22 @@ function renderMenuItems() {
     const card = document.createElement('div');
     card.className = 'menu-item-card';
     
-    const displayName = item.translatedName || item.name;
-    const displayDesc = item.translatedDescription || item.description;
-    
     card.innerHTML = `
       ${item.image_url ? `
         <div class="item-image-container">
-          <img src="${item.image_url}" alt="${displayName}" class="item-image">
+          <img src="${item.image_url}" alt="${item.name}" class="item-image">
           ${item.is_new ? '<span class="new-badge">🆕 NEW</span>' : ''}
         </div>
       ` : ''}
       <div class="item-content">
         <div class="item-header">
           <h3 class="item-name">
-            ${displayName}
+            ${item.name}
             ${item.is_new && !item.image_url ? '<span class="new-badge-inline">🆕</span>' : ''}
           </h3>
           <span class="item-price">${parseFloat(item.price).toFixed(2)} ${item.currency}</span>
         </div>
-        ${displayDesc ? `<p class="item-description">${displayDesc}</p>` : ''}
+        ${item.description ? `<p class="item-description">${item.description}</p>` : ''}
         ${item.allergens ? `
           <div class="item-allergens">
             ${item.allergens.split(',').slice(0, 3).map(a => 
@@ -348,17 +370,17 @@ function renderFooter(containerId) {
   footer.innerHTML = `
     <div class="footer-content">
       <div class="footer-section">
-        <h3>Contact</h3>
+        <h3>${t('contact')}</h3>
         ${restaurant.phone ? `<p>📞 <a href="tel:${restaurant.phone}">${restaurant.phone}</a></p>` : ''}
         ${restaurant.address ? `<p>📍 ${restaurant.address}</p>` : ''}
         ${restaurant.opening_hours ? `<p>🕐 ${restaurant.opening_hours}</p>` : ''}
       </div>
       <div class="footer-section">
-        <h3>About</h3>
+        <h3>${t('about')}</h3>
         <p>${restaurant.about_text || `Welcome to ${restaurant.name}`}</p>
       </div>
       <div class="footer-section">
-        <h3>Follow Us</h3>
+        <h3>${t('followUs')}</h3>
         <div class="social-links">
           ${restaurant.instagram_url ? `<a href="${restaurant.instagram_url}" target="_blank">Instagram</a>` : ''}
           ${restaurant.facebook_url ? `<a href="${restaurant.facebook_url}" target="_blank">Facebook</a>` : ''}
@@ -372,14 +394,11 @@ function renderFooter(containerId) {
   `;
 }
 
-// Modal
 function showModal(item) {
   const modal = document.getElementById('modal');
-  const displayName = item.translatedName || item.name;
-  const displayDesc = item.translatedDescription || item.description;
   
-  document.getElementById('modal-title').textContent = displayName;
-  document.getElementById('modal-description').textContent = displayDesc || 'No description available.';
+  document.getElementById('modal-title').textContent = item.name;
+  document.getElementById('modal-description').textContent = item.description || 'No description available.';
   document.getElementById('modal-price').textContent = `${parseFloat(item.price).toFixed(2)} ${item.currency}`;
   
   const modalImage = document.getElementById('modal-image');
@@ -394,7 +413,7 @@ function showModal(item) {
   if (item.allergens) {
     const allergensList = item.allergens.split(',').map(a => a.trim());
     allergensDiv.innerHTML = `
-      <span class="allergens-label">Allergens:</span>
+      <span class="allergens-label">${t('allergens')}:</span>
       ${allergensList.map(a => `<span class="allergen-badge">${a}</span>`).join('')}
     `;
     allergensDiv.classList.remove('hidden');
@@ -412,7 +431,6 @@ function hideModal() {
 document.getElementById('modal-close').onclick = hideModal;
 document.querySelector('.modal-overlay').onclick = hideModal;
 
-// Language Switcher
 function updateLanguageSwitcher() {
   document.getElementById('current-lang-flag').textContent = LANG_FLAGS[state.currentLang];
   document.getElementById('current-lang-code').textContent = state.currentLang.toUpperCase();
@@ -430,13 +448,11 @@ document.querySelectorAll('.lang-option').forEach(btn => {
     updateLanguageSwitcher();
     document.getElementById('lang-dropdown').classList.add('hidden');
     
-    // Update URL and reload
     const url = new URL(window.location.href);
     url.searchParams.set('lang', lang);
     window.history.replaceState({}, '', url);
     
-    // Reload data
-    const slug = window.location.pathname.split('/')[1];
+    const slug = window.location.pathname.split('/').filter(p => p)[0];
     fetchRestaurantData(slug).then(() => {
       const isMenuPage = window.location.pathname.includes('/menu');
       if (isMenuPage) {
@@ -448,18 +464,7 @@ document.querySelectorAll('.lang-option').forEach(btn => {
   };
 });
 
-// Utility Functions
-function navigateToMenu(categoryId = null) {
-  const slug = state.restaurant.slug;
-  let url = `/${slug}/menu?lang=${state.currentLang}`;
-  if (categoryId) {
-    url += `&category=${categoryId}`;
-  }
-  window.location.href = url;
-}
-
 function updateURL() {
-  const slug = state.restaurant.slug;
   const url = new URL(window.location.href);
   url.searchParams.set('lang', state.currentLang);
   
@@ -478,7 +483,6 @@ function updateURL() {
   window.history.replaceState({}, '', url);
 }
 
-// Close dropdown when clicking outside
 document.addEventListener('click', (e) => {
   const switcher = document.getElementById('language-switcher');
   const dropdown = document.getElementById('lang-dropdown');
@@ -488,5 +492,4 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// Initialize on load
 window.addEventListener('DOMContentLoaded', init);
