@@ -5,12 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QR Menu</title>
   <link rel="stylesheet" href="/styles.css">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <!-- Language Switcher (Fixed) -->
   <div id="language-switcher" class="language-switcher">
     <button id="lang-btn" class="lang-btn">
       <span id="current-lang-flag">🇬🇧</span>
@@ -18,73 +15,60 @@
       <span class="arrow">▼</span>
     </button>
     <div id="lang-dropdown" class="lang-dropdown hidden">
-      <button class="lang-option" data-lang="tr">🇹🇷 Türkçe</button>
-      <button class="lang-option" data-lang="en">🇬🇧 English</button>
-      <button class="lang-option" data-lang="es">🇪🇸 Español</button>
-      <button class="lang-option" data-lang="fr">🇫🇷 Français</button>
+      <button class="lang-option" data-lang="tr">🇹🇷 TR</button>
+      <button class="lang-option" data-lang="en">🇬🇧 EN</button>
+      <button class="lang-option" data-lang="es">🇪🇸 ES</button>
+      <button class="lang-option" data-lang="fr">🇫🇷 FR</button>
     </div>
   </div>
 
-  <!-- Main Container -->
-  <div id="app">
-    <!-- Loading State -->
-    <div id="loading" class="loading">
-      <div class="spinner"></div>
-      <p>Loading...</p>
+  <div id="homepage" class="page">
+    <div class="hero-section">
+      <div id="hero-image" class="hero-image"></div>
+      <div class="hero-overlay">
+        <div class="hero-content">
+          <img id="restaurant-logo" class="restaurant-logo hidden" src="" alt="Logo">
+          <h1 id="restaurant-name" class="restaurant-name"></h1>
+          <button id="view-menu-btn" class="btn btn-primary">
+            🍽️ <span id="view-menu-text">View Menu</span>
+          </button>
+        </div>
+      </div>
     </div>
 
-    <!-- Homepage -->
-    <div id="homepage" class="page hidden">
-      <div class="hero">
-        <img id="restaurant-logo" class="restaurant-logo hidden" src="" alt="Logo">
-        <h1 id="restaurant-name" class="restaurant-name"></h1>
-        <p id="restaurant-about" class="restaurant-about"></p>
-        <button id="view-menu-btn" class="btn btn-primary">
-          🍽️ View Menu
-        </button>
-      </div>
-
-      <div id="categories-grid" class="categories-grid"></div>
-
-      <footer id="footer" class="footer"></footer>
+    <div class="restaurant-story">
+      <h2 id="story-title">Our Story</h2>
+      <p id="restaurant-about" class="restaurant-about"></p>
     </div>
 
-    <!-- Menu Page -->
-    <div id="menu-page" class="page hidden">
-      <header class="menu-header">
-        <button id="back-home-btn" class="btn-back">
-          ← <span id="header-restaurant-name"></span>
-        </button>
-      </header>
+    <footer id="footer" class="footer"></footer>
+  </div>
 
-      <div class="menu-container">
-        <!-- Navigation Breadcrumbs -->
-        <div id="breadcrumbs" class="breadcrumbs hidden"></div>
+  <div id="menu-page" class="page hidden">
+    <header class="menu-header">
+      <button id="back-home-btn" class="btn-back">
+        ← <span id="header-restaurant-name"></span>
+      </button>
+    </header>
 
-        <!-- Category Filters -->
-        <div id="category-filters" class="category-filters"></div>
-
-        <!-- Subcategory Filters -->
-        <div id="subcategory-filters" class="subcategory-filters hidden"></div>
-
-        <!-- Menu Items Grid -->
-        <div id="menu-items" class="menu-items-grid"></div>
-      </div>
-
-      <footer id="menu-footer" class="footer"></footer>
+    <div class="menu-container">
+      <div id="breadcrumbs" class="breadcrumbs hidden"></div>
+      <div id="category-filters" class="category-filters"></div>
+      <div id="subcategory-filters" class="subcategory-filters hidden"></div>
+      <div id="menu-items" class="menu-items-grid"></div>
     </div>
 
-    <!-- Error Page -->
-    <div id="error-page" class="page hidden">
-      <div class="error-content">
-        <h1>404</h1>
-        <h2>Restaurant Not Found</h2>
-        <p>The restaurant you're looking for doesn't exist or the URL is incorrect.</p>
-      </div>
+    <footer id="menu-footer" class="footer"></footer>
+  </div>
+
+  <div id="error-page" class="page hidden">
+    <div class="error-content">
+      <h1>404</h1>
+      <h2 id="error-title">Restaurant Not Found</h2>
+      <p id="error-message">The restaurant you're looking for doesn't exist.</p>
     </div>
   </div>
 
-  <!-- Modal -->
   <div id="modal" class="modal hidden">
     <div class="modal-overlay"></div>
     <div class="modal-content">
